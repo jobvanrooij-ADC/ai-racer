@@ -459,7 +459,7 @@ export default function App() {
 
             g.waveTheme = theme;
             g.waveWarning = theme.name;
-            g.waveWarnT = 65;
+            g.waveWarnT = 120;
             sfxWaveWarn();
 
             const isFast = theme.mod === "fast";
@@ -731,28 +731,24 @@ export default function App() {
           ctx.save(); ctx.translate(dx, p.y); ctx.rotate(Math.PI / 4); ctx.fillRect(-sz, -sz, sz * 2, sz * 2); ctx.restore();
         }
 
-        // Headline — single line if fits, two lines if long
+        // Headline — all text ABOVE the portal line
         ctx.textAlign = "center";
-        const headline = p.name + ": " + p.sub;
         ctx.font = "bold 26px 'Courier New', monospace";
+        const headline = p.name + ": " + p.sub;
         const fits = ctx.measureText(headline).width < W - 80;
+        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
         if (fits) {
-          ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
-          ctx.fillText(headline, W / 2, p.y - 8);
-          ctx.shadowBlur = 0;
+          ctx.fillText(headline, W / 2, p.y - 22);
         } else {
-          ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
-          ctx.fillText(p.name, W / 2, p.y - 20);
-          ctx.shadowBlur = 0;
-          ctx.font = "bold 18px 'Courier New', monospace";
-          ctx.fillStyle = p.c + "90";
-          ctx.fillText(p.sub, W / 2, p.y + 6);
+          ctx.fillText(p.name, W / 2, p.y - 48);
+          ctx.fillText(p.sub, W / 2, p.y - 22);
         }
+        ctx.shadowBlur = 0;
 
-        // Points below the line
+        // Points
         ctx.font = "bold 13px 'Courier New', monospace";
         ctx.fillStyle = p.c + "60";
-        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + (fits ? 30 : 30));
+        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + 30);
       }
 
       // ═══ OBSTACLES ═══
