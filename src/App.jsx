@@ -185,6 +185,8 @@ function createGame() {
     rockets: [],
     // Hints
     hintMove: 180, hintShoot: 250, hintMoved: false, hintShot: false,
+    // Capture freeze
+    freezeT: 0, freezeC: "#00e45f",
   };
 }
 
@@ -309,6 +311,8 @@ export default function App() {
     function tick() {
       const g = game.current;
       if (!g || g.over) return;
+      // Micro-freeze on capture
+      if (g.freezeT > 0) { g.freezeT--; raf.current = requestAnimationFrame(tick); return; }
       g.frame++;
       const TOTAL = 16000;
 
@@ -417,8 +421,8 @@ export default function App() {
         g.portal.y += g.speed * 1.3;
         g.portal.pulse++;
 
-        // Smooth pass-through
-        if (Math.abs(g.portal.y - g.y) < 35) {
+        // Capture — pass through portal
+        if (Math.abs(g.portal.y - g.y) < 40) {
           g.combo++; g.comboT = 150;
           const mul = Math.min(5, g.combo) * g.scoreMultiplier;
           const p = Math.round(g.portal.pts * mul);
@@ -426,25 +430,28 @@ export default function App() {
           g.collected.push(g.portal);
           sfxCollect();
 
-          // Particles along the portal line
-          for (let j = 0; j < 30; j++) {
-            g.sparks.push({ x: Math.random() * W, y: g.portal.y, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 5 - 2, l: 35, c: g.portal.c, s: Math.random() * 3 + 1.5 });
+          // Micro-freeze for impact
+          g.freezeT = 4;
+
+          // BIG particle burst along full width
+          for (let j = 0; j < 50; j++) {
+            g.sparks.push({ x: Math.random() * W, y: g.portal.y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 7 - 3, l: 45, c: g.portal.c, s: Math.random() * 4 + 2 });
           }
           // Burst around player
-          for (let j = 0; j < 20; j++) {
-            const a = (Math.PI * 2 / 20) * j;
-            g.sparks.push({ x: g.x, y: g.y, vx: Math.cos(a) * (3 + Math.random() * 3), vy: Math.sin(a) * (3 + Math.random() * 3), l: 30, c: g.portal.c, s: Math.random() * 3 + 1 });
+          for (let j = 0; j < 25; j++) {
+            const a = (Math.PI * 2 / 25) * j;
+            g.sparks.push({ x: g.x, y: g.y, vx: Math.cos(a) * (4 + Math.random() * 4), vy: Math.sin(a) * (4 + Math.random() * 4), l: 35, c: g.portal.c, s: Math.random() * 4 + 1.5 });
           }
 
-          g.flash = 12; g.flashC = g.portal.c;
-
-          // Achievement toast
-          g.toast = { name: g.portal.name, sub: g.portal.sub, yr: g.portal.yr, news: g.portal.news, c: g.portal.c, cat: g.portal.cat, pts: p, combo: g.combo };
-          g.toastT = 130;
-
-          g.texts.push({ x: g.x, y: g.y - 30, t: "+" + p, l: 55, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: "" });
+          g.flash = 16; g.flashC = g.portal.c;
+          g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 65, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: g.portal.name });
           g.portal = null;
-        } else if (g.portal.y > H + 80) {
+        } else if (g.portal.y > H + 40) {
+          // MISSED — negative feedback
+          g.combo = 0;
+          g.flash = 10; g.flashC = "#ff4d6a";
+          g.texts.push({ x: W / 2, y: H - 60, t: "MISSED!", l: 50, c: "#ff4d6a", sub: "", big: "" });
+          sfxHit();
           g.portal = null;
         }
       }
@@ -681,7 +688,7 @@ export default function App() {
       // Nebulae
       g.nebulae.forEach(n => {
         const ng = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
-        ng.addColorStop(0, n.c + "14"); ng.addColorStop(1, "transparent");
+        ng.addColorStop(0, n.c + "08"); ng.addColorStop(1, "transparent");
         ctx.fillStyle = ng; ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
       });
 
@@ -697,43 +704,78 @@ export default function App() {
       }
 
       // Trail
-      g.trail.forEach(t => { ctx.globalAlpha = t.l / 22 * 0.18; ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(t.x, t.y, 3, 0, Math.PI * 2); ctx.fill(); });
+      g.trail.forEach(t => { ctx.globalAlpha = t.l / 22 * 0.08; ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(t.x, t.y, 3, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalAlpha = 1;
 
-      // ═══ PORTAL ═══
+      // ═══ PORTAL — THE DOMINANT VISUAL ═══
       if (g.portal) {
         const p = g.portal;
-        const pulse = Math.sin(p.pulse * 0.08) * 0.3;
+        const pulse = Math.sin(p.pulse * 0.08);
+        const gateH = 70;
+        const gateTop = p.y - gateH / 2;
+        const gateBot = p.y + gateH / 2;
 
-        // Full-width glow line
-        ctx.shadowColor = p.c; ctx.shadowBlur = 25;
-        ctx.strokeStyle = p.c + "60"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(30, p.y); ctx.lineTo(W - 30, p.y); ctx.stroke();
+        // Outer glow — wide, soft
+        ctx.shadowColor = p.c; ctx.shadowBlur = 50;
+        const outerGlow = ctx.createLinearGradient(0, gateTop - 40, 0, gateBot + 40);
+        outerGlow.addColorStop(0, "transparent");
+        outerGlow.addColorStop(0.2, p.c + "08");
+        outerGlow.addColorStop(0.5, p.c + "15");
+        outerGlow.addColorStop(0.8, p.c + "08");
+        outerGlow.addColorStop(1, "transparent");
+        ctx.fillStyle = outerGlow; ctx.fillRect(0, gateTop - 40, W, gateH + 80);
 
-        // Gate glow area
-        const gg = ctx.createLinearGradient(0, p.y - 35, 0, p.y + 35);
-        gg.addColorStop(0, "transparent"); gg.addColorStop(0.3, p.c + "0c"); gg.addColorStop(0.5, p.c + "18"); gg.addColorStop(0.7, p.c + "0c"); gg.addColorStop(1, "transparent");
-        ctx.fillStyle = gg; ctx.fillRect(0, p.y - 35, W, 70);
+        // Top bar — thick, bright
+        ctx.shadowBlur = 35;
+        ctx.strokeStyle = p.c; ctx.lineWidth = 4 + pulse;
+        ctx.beginPath(); ctx.moveTo(20, gateTop); ctx.lineTo(W - 20, gateTop); ctx.stroke();
+        // Bottom bar
+        ctx.beginPath(); ctx.moveTo(20, gateBot); ctx.lineTo(W - 20, gateBot); ctx.stroke();
+        ctx.shadowBlur = 0;
 
-        // Side brackets
-        ctx.shadowBlur = 0; ctx.strokeStyle = p.c + "90"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(22, p.y - 18); ctx.lineTo(12, p.y - 18); ctx.lineTo(12, p.y + 18); ctx.lineTo(22, p.y + 18); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(W - 22, p.y - 18); ctx.lineTo(W - 12, p.y - 18); ctx.lineTo(W - 12, p.y + 18); ctx.lineTo(W - 22, p.y + 18); ctx.stroke();
+        // Inner glow fill between bars
+        const innerGlow = ctx.createLinearGradient(0, gateTop, 0, gateBot);
+        innerGlow.addColorStop(0, p.c + "20");
+        innerGlow.addColorStop(0.5, p.c + "0c");
+        innerGlow.addColorStop(1, p.c + "20");
+        ctx.fillStyle = innerGlow; ctx.fillRect(20, gateTop, W - 40, gateH);
 
-        // Headline — all text ABOVE the portal line
+        // Thick side pillars
+        ctx.fillStyle = p.c + "90";
+        ctx.fillRect(8, gateTop - 8, 8, gateH + 16);
+        ctx.fillRect(W - 16, gateTop - 8, 8, gateH + 16);
+        // Pillar caps
+        ctx.fillStyle = p.c;
+        ctx.fillRect(6, gateTop - 12, 12, 5);
+        ctx.fillRect(6, gateBot + 7, 12, 5);
+        ctx.fillRect(W - 18, gateTop - 12, 12, 5);
+        ctx.fillRect(W - 18, gateBot + 7, 12, 5);
+
+        // Corner accents
+        ctx.strokeStyle = p.c; ctx.lineWidth = 3;
+        const cSz = 16;
+        // Top-left
+        ctx.beginPath(); ctx.moveTo(20, gateTop + cSz); ctx.lineTo(20, gateTop); ctx.lineTo(20 + cSz, gateTop); ctx.stroke();
+        // Top-right
+        ctx.beginPath(); ctx.moveTo(W - 20, gateTop + cSz); ctx.lineTo(W - 20, gateTop); ctx.lineTo(W - 20 - cSz, gateTop); ctx.stroke();
+        // Bottom-left
+        ctx.beginPath(); ctx.moveTo(20, gateBot - cSz); ctx.lineTo(20, gateBot); ctx.lineTo(20 + cSz, gateBot); ctx.stroke();
+        // Bottom-right
+        ctx.beginPath(); ctx.moveTo(W - 20, gateBot - cSz); ctx.lineTo(W - 20, gateBot); ctx.lineTo(W - 20 - cSz, gateBot); ctx.stroke();
+
+        // ─── Text INSIDE the gate ───
         ctx.textAlign = "center";
         ctx.font = "bold 26px 'Courier New', monospace";
         const headline = p.name + ": " + p.sub;
-        const fits = ctx.measureText(headline).width < W - 80;
-        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
+        const fits = ctx.measureText(headline).width < W - 100;
+        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 20;
         if (fits) {
-          ctx.fillText(headline, W / 2, p.y - 22);
+          ctx.fillText(headline, W / 2, p.y + 8);
         } else {
-          ctx.fillText(p.name, W / 2, p.y - 48);
-          ctx.fillText(p.sub, W / 2, p.y - 22);
+          ctx.fillText(p.name, W / 2, p.y - 6);
+          ctx.fillText(p.sub, W / 2, p.y + 22);
         }
         ctx.shadowBlur = 0;
-
       }
 
       // ═══ OBSTACLES ═══
@@ -782,8 +824,13 @@ export default function App() {
         if (o.curHp > 1) { for (let i = 0; i < Math.min(o.curHp, 8); i++) { ctx.fillStyle = o.c; ctx.beginPath(); ctx.arc(-Math.min(o.curHp, 8) * 3 + 3 + i * 6, -sz - 6, 2.5, 0, Math.PI * 2); ctx.fill(); } }
         if (o.mini) { ctx.strokeStyle = o.c; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, sz + 6, 0, Math.PI * 2); ctx.stroke(); }
 
-        ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
-        ctx.fillText(o.name, 0, sz + 16);
+        // Only show enemy label briefly after spawn (fade out)
+        if (o.age < 30) {
+          ctx.globalAlpha = Math.max(0, 1 - o.age / 30);
+          ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
+          ctx.fillText(o.name, 0, sz + 16);
+          ctx.globalAlpha = 1;
+        }
         ctx.restore();
       });
 
@@ -949,10 +996,10 @@ export default function App() {
       ctx.fillStyle = "rgba(61,106,191,0.08)"; ctx.beginPath(); ctx.roundRect(14, pbY, W - 28, 9, 4); ctx.fill();
       const pbw = (W - 28) * prog;
       if (pbw > 0) { const pbg = ctx.createLinearGradient(14, 0, 14 + pbw, 0); pbg.addColorStop(0, "#3d6abf"); pbg.addColorStop(1, "#00e45f"); ctx.fillStyle = pbg; ctx.beginPath(); ctx.roundRect(14, pbY, pbw, 9, 4); ctx.fill(); }
-      YEARS.forEach((yr, i) => { const px = 14 + (W - 28) * (i / 4); ctx.font = i === yi ? "bold 10px 'Courier New', monospace" : "10px 'Courier New', monospace"; ctx.fillStyle = i === yi ? "#00e45f" : "rgba(240,244,249,0.2)"; ctx.textAlign = "center"; ctx.fillText(yr, px, pbY - 3); });
+      YEARS.forEach((yr, i) => { const px = 14 + (W - 28) * (i / 4); const portalMatch = g.portal && g.portal.yr === yr; const pulse = portalMatch ? 0.7 + Math.sin(g.frame * 0.12) * 0.3 : 0; ctx.font = (i === yi || portalMatch) ? "bold 10px 'Courier New', monospace" : "10px 'Courier New', monospace"; if (portalMatch) { ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 8 + pulse * 6; ctx.fillStyle = "#00e45f"; } else { ctx.shadowBlur = 0; ctx.fillStyle = i === yi ? "#00e45f" : "rgba(240,244,249,0.2)"; } ctx.textAlign = "center"; ctx.fillText(yr, px, pbY - 3); ctx.shadowBlur = 0; });
 
-      // Wave warning — BIG and prominent
-      if (g.waveWarnT > 0 && g.waveWarning) {
+      // Wave warning — BIG and prominent (hide when portal visible to avoid clutter)
+      if (g.waveWarnT > 0 && g.waveWarning && !g.portal) {
         const wa = Math.min(1, g.waveWarnT / 15);
         ctx.globalAlpha = wa;
         // Full-width dark background band
