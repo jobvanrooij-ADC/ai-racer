@@ -731,18 +731,28 @@ export default function App() {
           ctx.save(); ctx.translate(dx, p.y); ctx.rotate(Math.PI / 4); ctx.fillRect(-sz, -sz, sz * 2, sz * 2); ctx.restore();
         }
 
-        // Single headline: "Name: Sub"
-        ctx.font = "bold 26px 'Courier New', monospace";
-        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
+        // Headline — single line if fits, two lines if long
         ctx.textAlign = "center";
         const headline = p.name + ": " + p.sub;
-        ctx.fillText(headline, W / 2, p.y - 12);
-        ctx.shadowBlur = 0;
+        ctx.font = "bold 26px 'Courier New', monospace";
+        const fits = ctx.measureText(headline).width < W - 80;
+        if (fits) {
+          ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
+          ctx.fillText(headline, W / 2, p.y - 8);
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
+          ctx.fillText(p.name, W / 2, p.y - 20);
+          ctx.shadowBlur = 0;
+          ctx.font = "bold 18px 'Courier New', monospace";
+          ctx.fillStyle = p.c + "90";
+          ctx.fillText(p.sub, W / 2, p.y + 6);
+        }
 
         // Points below the line
         ctx.font = "bold 13px 'Courier New', monospace";
         ctx.fillStyle = p.c + "60";
-        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + 35);
+        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + (fits ? 30 : 30));
       }
 
       // ═══ OBSTACLES ═══
@@ -1004,45 +1014,7 @@ export default function App() {
       ctx.fillText(g.collected.length + "/" + TIMELINE.length + " EVENTS", 14, H - 8);
       ctx.textAlign = "right"; ctx.fillText("←→↑↓ MOVE  |  SPACE SHOOT", W - 14, H - 8);
 
-      // ═══ ACHIEVEMENT TOAST (top of screen) ═══
-      if (g.toast && g.toastT > 0) {
-        const tAlpha = g.toastT > 110 ? (130 - g.toastT) / 20 : g.toastT < 20 ? g.toastT / 20 : 1;
-        ctx.globalAlpha = tAlpha;
-
-        const tw = 520, th = 52;
-        const tx = W / 2 - tw / 2, ty = 76;
-
-        // Background
-        ctx.fillStyle = "rgba(6,12,24,0.92)";
-        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 8); ctx.fill();
-
-        // Left accent bar
-        ctx.fillStyle = g.toast.c;
-        ctx.fillRect(tx, ty, 4, th);
-
-        // One-line headline: "Name: Sub"
-        ctx.font = "bold 22px 'Courier New', monospace";
-        ctx.fillStyle = g.toast.c;
-        ctx.shadowColor = g.toast.c; ctx.shadowBlur = 10;
-        ctx.textAlign = "left";
-        const headline = g.toast.name + ": " + g.toast.sub;
-        ctx.fillText(headline, tx + 16, ty + 32);
-        ctx.shadowBlur = 0;
-
-        // Points + combo on the right
-        ctx.font = "bold 16px 'Courier New', monospace";
-        ctx.fillStyle = "#00e45f";
-        ctx.textAlign = "right";
-        const ptsText = "+" + g.toast.pts + (g.toast.combo > 1 ? "  " + Math.min(5, g.toast.combo) + "×" : "");
-        ctx.fillText(ptsText, tx + tw - 14, ty + 32);
-
-        // Border
-        ctx.strokeStyle = g.toast.c + "35";
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 8); ctx.stroke();
-
-        ctx.globalAlpha = 1;
-      }
+      // (Achievement toast removed — portal text is enough)
 
       // ─── Collected timeline (right side) ───
       if (g.collected.length > 0) {
