@@ -173,7 +173,7 @@ function createGame() {
     // Achievement toast
     toast: null, toastT: 0,
     // Wave system (decoupled)
-    waveCD: 90, waveActive: false, waveNum: 0,
+    waveCD: 30, waveActive: false, waveNum: 0,
     waveWarning: null, waveWarnT: 0, waveTheme: null,
     // Powerup items
     powerItems: [],
@@ -183,6 +183,8 @@ function createGame() {
     boss: null, bossPhase: false, bossDefeated: false,
     shipLevel: 0,
     rockets: [],
+    // Hints
+    hintMove: 180, hintShoot: 250, hintMoved: false, hintShot: false,
   };
 }
 
@@ -340,6 +342,7 @@ export default function App() {
       if (k.ArrowRight || k.d) mx = 1;
       if (k.ArrowUp || k.w) my = -1;
       if (k.ArrowDown || k.s) my = 1;
+      if (mx !== 0 || my !== 0) g.hintMoved = true;
       g.tx += mx * 8;
       g.ty += my * 8;
       if (touch.current) { g.tx += (touch.current.x - g.x) * 0.15; g.ty += (touch.current.y - g.y) * 0.15; }
@@ -352,6 +355,7 @@ export default function App() {
       // ─── SHOOTING ───
       if (g.shootCD > 0) g.shootCD--;
       const wantShoot = k[" "] || touchShoot.current;
+      if (wantShoot) g.hintShot = true;
       if (wantShoot && g.shootCD <= 0) {
         sfxShoot();
         if (g.weapon === "triple") {
@@ -681,17 +685,9 @@ export default function App() {
         ctx.fillStyle = ng; ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
       });
 
-      // Grid
-      ctx.strokeStyle = "rgba(61,106,191,0.03)"; ctx.lineWidth = 1;
-      for (let i = 0; i <= W; i += 50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
-      for (let i = -50 + g.gridY; i <= H; i += 50) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); }
-
       // Stars
       g.stars.forEach(s => { ctx.globalAlpha = 0.12 + Math.sin(s.tw) * 0.1 + s.r * 0.12; ctx.fillStyle = s.r > 1.2 ? "#b8d4f5" : "#6b9fe8"; ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.6, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalAlpha = 1;
-
-      // Speed lines
-      g.speedLines.forEach(s => { ctx.strokeStyle = `rgba(107,159,232,${0.02 + g.speed * 0.005})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x, s.y + s.l); ctx.stroke(); });
 
       // Flash
       if (g.flash > 0) {
@@ -724,13 +720,6 @@ export default function App() {
         ctx.beginPath(); ctx.moveTo(22, p.y - 18); ctx.lineTo(12, p.y - 18); ctx.lineTo(12, p.y + 18); ctx.lineTo(22, p.y + 18); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(W - 22, p.y - 18); ctx.lineTo(W - 12, p.y - 18); ctx.lineTo(W - 12, p.y + 18); ctx.lineTo(W - 22, p.y + 18); ctx.stroke();
 
-        // Pulsing diamonds
-        for (let i = 0; i < 8; i++) {
-          const dx = 50 + i * (W - 100) / 7, sz = 4 + pulse * 2;
-          ctx.fillStyle = p.c + "40";
-          ctx.save(); ctx.translate(dx, p.y); ctx.rotate(Math.PI / 4); ctx.fillRect(-sz, -sz, sz * 2, sz * 2); ctx.restore();
-        }
-
         // Headline — all text ABOVE the portal line
         ctx.textAlign = "center";
         ctx.font = "bold 26px 'Courier New', monospace";
@@ -745,10 +734,6 @@ export default function App() {
         }
         ctx.shadowBlur = 0;
 
-        // Points
-        ctx.font = "bold 13px 'Courier New', monospace";
-        ctx.fillStyle = p.c + "60";
-        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + 30);
       }
 
       // ═══ OBSTACLES ═══
@@ -1005,31 +990,32 @@ export default function App() {
         ctx.fillStyle = uc; ctx.fillRect(W - 104, H - 22, 90 * (g.powerupT / maxD), 6);
       }
 
-      // Counter + controls
-      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(240,244,249,0.25)"; ctx.textAlign = "left";
-      ctx.fillText(g.collected.length + "/" + TIMELINE.length + " EVENTS", 14, H - 8);
-      ctx.textAlign = "right"; ctx.fillText("←→↑↓ MOVE  |  SPACE SHOOT", W - 14, H - 8);
+      // ─── In-game hints (first seconds, fade when player acts) ───
+      if (!g.hintMoved && g.hintMove > 0) {
+        g.hintMove--;
+        ctx.globalAlpha = Math.min(1, g.hintMove / 30) * 0.6;
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#6b9fe8"; ctx.textAlign = "center";
+        ctx.fillText("← → ↑ ↓  BEWEGEN", W / 2, H * 0.55);
+        ctx.globalAlpha = 1;
+      }
+      if (!g.hintShot && g.hintShoot > 0) {
+        g.hintShoot--;
+        const showAt = g.hintMoved || g.hintMove <= 0;
+        if (showAt) {
+          ctx.globalAlpha = Math.min(1, g.hintShoot / 30) * 0.6;
+          ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#ff9f43"; ctx.textAlign = "center";
+          ctx.fillText("SPACE  SCHIETEN", W / 2, H * 0.62);
+          ctx.globalAlpha = 1;
+        }
+      }
 
       // (Achievement toast removed — portal text is enough)
 
-      // ─── Collected timeline (right side) ───
+      // ─── Collected counter (simple) ───
       if (g.collected.length > 0) {
-        const maxShow = Math.min(g.collected.length, 8);
-        const startIdx = Math.max(0, g.collected.length - maxShow);
-        const tlX = W - 6;
-        ctx.fillStyle = "rgba(6,12,24,0.65)";
-        ctx.beginPath(); ctx.roundRect(tlX - 75, 80, 78, maxShow * 20 + 10, 5); ctx.fill();
-        for (let i = startIdx; i < g.collected.length; i++) {
-          const m = g.collected[i];
-          const mc = CAT_COLORS[m.cat] || "#6b9fe8";
-          const my = 92 + (i - startIdx) * 20;
-          ctx.fillStyle = mc;
-          ctx.beginPath(); ctx.arc(tlX - 65, my, 4, 0, Math.PI * 2); ctx.fill();
-          ctx.font = "bold 9px 'Courier New', monospace";
-          ctx.fillStyle = mc;
-          ctx.textAlign = "left";
-          ctx.fillText(m.name.slice(0, 9), tlX - 57, my + 3);
-        }
+        ctx.font = "bold 14px 'Courier New', monospace";
+        ctx.fillStyle = "#00e45f"; ctx.textAlign = "right";
+        ctx.fillText("✓ " + g.collected.length + "/" + TIMELINE.length, W - 14, H - 10);
       }
 
       // Year banner
@@ -1047,11 +1033,9 @@ export default function App() {
         ctx.globalAlpha = 1;
       }
 
-      // Scanlines + vignette
-      ctx.fillStyle = "rgba(0,0,0,0.02)";
-      for (let i = 0; i < H; i += 3) ctx.fillRect(0, i, W, 1);
+      // Vignette (scanlines removed)
       const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8);
-      vig.addColorStop(0, "transparent"); vig.addColorStop(1, "rgba(0,0,0,0.3)");
+      vig.addColorStop(0, "transparent"); vig.addColorStop(1, "rgba(0,0,0,0.25)");
       ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
 
       ctx.restore();
