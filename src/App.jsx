@@ -731,27 +731,18 @@ export default function App() {
           ctx.save(); ctx.translate(dx, p.y); ctx.rotate(Math.PI / 4); ctx.fillRect(-sz, -sz, sz * 2, sz * 2); ctx.restore();
         }
 
-        // Category badge
-        const catLabel = CAT_LABELS[p.cat] || "EVENT";
-        ctx.font = "bold 13px 'Courier New', monospace";
-        ctx.fillStyle = p.c + "80"; ctx.textAlign = "center";
-        ctx.fillText("─── " + catLabel + " · " + p.yr + " ───", W / 2, p.y - 44);
-
-        // Name — BIG
-        ctx.font = "bold 28px 'Courier New', monospace";
+        // Single headline: "Name: Sub"
+        ctx.font = "bold 26px 'Courier New', monospace";
         ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 15;
-        ctx.fillText(p.name, W / 2, p.y - 18);
+        ctx.textAlign = "center";
+        const headline = p.name + ": " + p.sub;
+        ctx.fillText(headline, W / 2, p.y - 12);
         ctx.shadowBlur = 0;
 
-        // Sub
-        ctx.font = "14px 'Courier New', monospace";
-        ctx.fillStyle = p.c + "90";
-        ctx.fillText(p.sub, W / 2, p.y + 35);
-
-        // Points
-        ctx.font = "bold 14px 'Courier New', monospace";
-        ctx.fillStyle = p.c + "50";
-        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + 52);
+        // Points below the line
+        ctx.font = "bold 13px 'Courier New', monospace";
+        ctx.fillStyle = p.c + "60";
+        ctx.fillText("+" + p.pts + " PTS", W / 2, p.y + 35);
       }
 
       // ═══ OBSTACLES ═══
