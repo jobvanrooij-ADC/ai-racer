@@ -458,11 +458,11 @@ export default function App() {
 
       // ─── WAVE SYSTEM (decoupled from portals) ───
       if (!g.bossPhase) {
-        if (g.waveWarnT > 0) g.waveWarnT--;
+        if (g.waveWarnT > 0 && !g.portal) g.waveWarnT--;
 
         if (!g.waveActive) {
-          g.waveCD--;
-          if (g.waveCD <= 0) {
+          if (!g.portal) g.waveCD--;
+          if (g.waveCD <= 0 && !g.portal) {
             g.waveNum++;
             const theme = WAVE_THEMES[Math.floor(Math.random() * WAVE_THEMES.length)];
             const form = FORMATIONS[Math.floor(Math.random() * FORMATIONS.length)]();
@@ -998,8 +998,8 @@ export default function App() {
       if (pbw > 0) { const pbg = ctx.createLinearGradient(14, 0, 14 + pbw, 0); pbg.addColorStop(0, "#3d6abf"); pbg.addColorStop(1, "#00e45f"); ctx.fillStyle = pbg; ctx.beginPath(); ctx.roundRect(14, pbY, pbw, 9, 4); ctx.fill(); }
       YEARS.forEach((yr, i) => { const px = 14 + (W - 28) * (i / 4); const portalMatch = g.portal && g.portal.yr === yr; const pulse = portalMatch ? 0.7 + Math.sin(g.frame * 0.12) * 0.3 : 0; ctx.font = (i === yi || portalMatch) ? "bold 10px 'Courier New', monospace" : "10px 'Courier New', monospace"; if (portalMatch) { ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 8 + pulse * 6; ctx.fillStyle = "#00e45f"; } else { ctx.shadowBlur = 0; ctx.fillStyle = i === yi ? "#00e45f" : "rgba(240,244,249,0.2)"; } ctx.textAlign = "center"; ctx.fillText(yr, px, pbY - 3); ctx.shadowBlur = 0; });
 
-      // Wave warning — BIG and prominent (hide when portal visible to avoid clutter)
-      if (g.waveWarnT > 0 && g.waveWarning && !g.portal) {
+      // Wave warning — BIG and prominent
+      if (g.waveWarnT > 0 && g.waveWarning) {
         const wa = Math.min(1, g.waveWarnT / 15);
         ctx.globalAlpha = wa;
         // Full-width dark background band
