@@ -1018,53 +1018,37 @@ export default function App() {
         const tAlpha = g.toastT > 110 ? (130 - g.toastT) / 20 : g.toastT < 20 ? g.toastT / 20 : 1;
         ctx.globalAlpha = tAlpha;
 
-        const tw = 500, th = 88;
+        const tw = 520, th = 52;
         const tx = W / 2 - tw / 2, ty = 76;
 
         // Background
-        ctx.fillStyle = "rgba(6,12,24,0.94)";
-        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 10); ctx.fill();
+        ctx.fillStyle = "rgba(6,12,24,0.92)";
+        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 8); ctx.fill();
 
         // Left accent bar
         ctx.fillStyle = g.toast.c;
-        ctx.fillRect(tx, ty, 5, th);
+        ctx.fillRect(tx, ty, 4, th);
 
-        // Category badge
-        const catL = CAT_LABELS[g.toast.cat] || "EVENT";
-        ctx.font = "bold 11px 'Courier New', monospace";
-        ctx.fillStyle = g.toast.c + "90";
-        ctx.textAlign = "left";
-        ctx.fillText(catL + " · " + g.toast.yr, tx + 18, ty + 18);
-
-        // Name — BIG
-        ctx.font = "bold 24px 'Courier New', monospace";
+        // One-line headline: "Name: Sub"
+        ctx.font = "bold 22px 'Courier New', monospace";
         ctx.fillStyle = g.toast.c;
         ctx.shadowColor = g.toast.c; ctx.shadowBlur = 10;
-        ctx.fillText(g.toast.name, tx + 18, ty + 44);
+        ctx.textAlign = "left";
+        const headline = g.toast.name + ": " + g.toast.sub;
+        ctx.fillText(headline, tx + 16, ty + 32);
         ctx.shadowBlur = 0;
 
-        // Points
-        ctx.font = "bold 18px 'Courier New', monospace";
+        // Points + combo on the right
+        ctx.font = "bold 16px 'Courier New', monospace";
         ctx.fillStyle = "#00e45f";
         ctx.textAlign = "right";
-        ctx.fillText("+" + g.toast.pts, tx + tw - 16, ty + 26);
-        if (g.toast.combo > 1) {
-          ctx.font = "bold 13px 'Courier New', monospace";
-          ctx.fillStyle = "#ffd700";
-          ctx.fillText(Math.min(5, g.toast.combo) + "x COMBO", tx + tw - 16, ty + 44);
-        }
-
-        // News — truncated
-        ctx.font = "12px 'Courier New', monospace";
-        ctx.fillStyle = "rgba(240,244,249,0.55)";
-        ctx.textAlign = "left";
-        const newsText = g.toast.news.length > 60 ? g.toast.news.slice(0, 60) + "..." : g.toast.news;
-        ctx.fillText(newsText, tx + 18, ty + 70);
+        const ptsText = "+" + g.toast.pts + (g.toast.combo > 1 ? "  " + Math.min(5, g.toast.combo) + "×" : "");
+        ctx.fillText(ptsText, tx + tw - 14, ty + 32);
 
         // Border
-        ctx.strokeStyle = g.toast.c + "40";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 10); ctx.stroke();
+        ctx.strokeStyle = g.toast.c + "35";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 8); ctx.stroke();
 
         ctx.globalAlpha = 1;
       }
