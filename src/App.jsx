@@ -807,16 +807,55 @@ export default function App() {
 
       // ═══ POWERUP ITEMS ═══
       g.powerItems.forEach(p => {
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.pulse || 0) * 0.03);
-        ctx.shadowColor = p.c; ctx.shadowBlur = 20;
-        ctx.fillStyle = p.c + "30"; ctx.strokeStyle = p.c; ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < 10; i++) { const a = (Math.PI / 5) * i - Math.PI / 2, r = i % 2 === 0 ? 24 : 13; i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.save(); ctx.translate(p.x, p.y);
+        const pulse = Math.sin((p.pulse || 0) * 0.08) * 0.3 + 0.7;
+        const R = 26;
+
+        // Pulsing outer ring (makes it clearly a pickup)
+        ctx.strokeStyle = p.c + "40"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, R + 8 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = p.c + "20"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(0, 0, R + 14 + pulse * 8, 0, Math.PI * 2); ctx.stroke();
+
+        // Main circle body — clearly different from angular enemies
+        ctx.shadowColor = p.c; ctx.shadowBlur = 25;
+        ctx.fillStyle = p.c + "18";
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = p.c; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
         ctx.shadowBlur = 0;
-        ctx.font = "bold 10px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(p.name, 0, -1);
-        ctx.font = "7px 'Courier New', monospace"; ctx.fillStyle = p.c + "80"; ctx.fillText(p.desc || "", 0, 11);
+
+        // Inner icon per powerup type
+        ctx.fillStyle = p.c; ctx.strokeStyle = p.c; ctx.lineWidth = 2;
+        const pn = p.name;
+        if (pn === "HOMING") {
+          // Rocket icon
+          ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(-5, -2); ctx.lineTo(-3, -2); ctx.lineTo(-3, 6); ctx.lineTo(-7, 10); ctx.lineTo(7, 10); ctx.lineTo(3, 6); ctx.lineTo(3, -2); ctx.lineTo(5, -2); ctx.closePath(); ctx.fill();
+        } else if (pn === "RAPID") {
+          // Triple bullet icon
+          for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(i * 7, -4 + Math.abs(i) * 3, 3.5, 0, Math.PI * 2); ctx.fill(); }
+          ctx.beginPath(); ctx.moveTo(-8, 6); ctx.lineTo(8, 6); ctx.lineTo(0, -2); ctx.closePath(); ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1;
+        } else if (pn === "TRIPLE") {
+          // Three arrows up
+          for (let i = -1; i <= 1; i++) {
+            ctx.beginPath(); ctx.moveTo(i * 8, -10); ctx.lineTo(i * 8 - 4, -2); ctx.lineTo(i * 8 - 1.5, -2); ctx.lineTo(i * 8 - 1.5, 8); ctx.lineTo(i * 8 + 1.5, 8); ctx.lineTo(i * 8 + 1.5, -2); ctx.lineTo(i * 8 + 4, -2); ctx.closePath(); ctx.fill();
+          }
+        } else if (pn === "SHIELD") {
+          // Shield icon
+          ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(10, -6); ctx.lineTo(10, 2); ctx.quadraticCurveTo(10, 10, 0, 14); ctx.quadraticCurveTo(-10, 10, -10, 2); ctx.lineTo(-10, -6); ctx.closePath();
+          ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 8); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.stroke();
+        } else if (pn === "2x SCORE") {
+          // 2x text as icon
+          ctx.font = "bold 18px 'Courier New', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText("2×", 0, 0);
+        }
+
+        // Label below
+        ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText(p.name, 0, R + 6);
+
         ctx.restore();
       });
 
