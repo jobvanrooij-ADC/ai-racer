@@ -530,6 +530,10 @@ export default function App() {
         else if (o.pattern === "dive" && o.age > 30) { o.x += (g.x - o.x) * 0.035; o.y += 1.5; }
         else if (o.pattern === "bounce") { o.x = o.startX + Math.sin(o.age * 0.055) * 65; if (o.x < 30 || o.x > W - 30) o.startX = W / 2; }
         o.x = Math.max(25, Math.min(W - 25, o.x));
+        // Push enemies away from portal so they don't visually overlap
+        if (g.portal && Math.abs(o.y - g.portal.y) < 60) {
+          o.y += (o.y < g.portal.y ? -2.5 : 2.5);
+        }
         return o.y < H + 60;
       });
 
