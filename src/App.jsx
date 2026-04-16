@@ -554,10 +554,6 @@ export default function App() {
 
           g.flash = 8; g.flashC = g.portal.c;
           g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 55, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: "" });
-          // F: Event quote — shorter, not a big backdrop
-          if (g.portal.news) {
-            g.texts.push({ x: W / 2, y: g.portal.y + 28, t: "", l: 80, c: g.portal.c, sub: "", big: "", news: g.portal.news });
-          }
           g.portal = null;
         } else if (g.portal.y > H + 40) {
           // MISSED — negative feedback
@@ -1207,20 +1203,22 @@ export default function App() {
       if (g.waveWarnT > 0 && g.waveWarning) {
         const wa = Math.min(1, g.waveWarnT / 15);
         ctx.globalAlpha = wa;
+        const wy = 70; // Just below progress bar, higher up so it doesn't block the action
+        const wh = 42;
         // Full-width dark background band
-        ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, H * 0.22, W, 55);
+        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, wy, W, wh);
         // Colored accent lines
         const wc = g.waveTheme?.c || "#ff4d6a";
-        ctx.fillStyle = wc + "40"; ctx.fillRect(0, H * 0.22, W, 2); ctx.fillRect(0, H * 0.22 + 53, W, 2);
-        // Warning icon + text
-        ctx.font = "bold 22px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
-        ctx.shadowColor = wc; ctx.shadowBlur = 15;
-        ctx.fillText("⚠ INCOMING: " + g.waveWarning + " ⚠", W / 2, H * 0.22 + 28);
+        ctx.fillStyle = wc + "40"; ctx.fillRect(0, wy, W, 2); ctx.fillRect(0, wy + wh - 2, W, 2);
+        // Warning icon + text (slightly smaller)
+        ctx.font = "bold 17px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
+        ctx.shadowColor = wc; ctx.shadowBlur = 12;
+        ctx.fillText("⚠ INCOMING: " + g.waveWarning + " ⚠", W / 2, wy + 19);
         ctx.shadowBlur = 0;
         // Subtext with modifier info
         const modText = g.waveTheme?.mod === "fast" ? "SNEL — Extra snelle vijanden!" : g.waveTheme?.mod === "armored" ? "GEPANTSERD — Extra HP!" : g.waveTheme?.mod === "miniboss" ? "MINI-BOSS — Pas op voor de leider!" : "Schiet ze neer!";
-        ctx.font = "12px 'Courier New', monospace"; ctx.fillStyle = wc + "90";
-        ctx.fillText(modText, W / 2, H * 0.22 + 46);
+        ctx.font = "10px 'Courier New', monospace"; ctx.fillStyle = wc + "90";
+        ctx.fillText(modText, W / 2, wy + 34);
         ctx.globalAlpha = 1;
       }
 
