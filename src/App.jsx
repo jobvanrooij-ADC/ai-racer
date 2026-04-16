@@ -110,6 +110,7 @@ const ALL_POWERUPS = [...WEAPON_POWERUPS, ...UTIL_POWERUPS];
 
 const YEARS = ["2022", "2023", "2024", "2025", "2026"];
 const YEAR_SUBS = { "2022": "THE SPARK", "2023": "THE RACE BEGINS", "2024": "REASONING ERA", "2025": "YEAR OF AGENTS", "2026": "FULL AUTONOMY" };
+const YEAR_TAGLINES = { "2022": "AI ontsnapt uit het lab", "2023": "Elk bedrijf wordt een AI-bedrijf", "2024": "AI leert redeneren", "2025": "AI werkt voor je", "2026": "AI neemt het over" };
 const YEAR_BG = {
   "2022": ["#050a14", "#0a1628", "#0d1a30"],
   "2023": ["#060a18", "#0c1630", "#101e3a"],
@@ -158,8 +159,8 @@ function createGame() {
   }));
   return {
     x: W / 2, tx: W / 2, y: H - 120, ty: H - 120,
-    speed: 2, dist: 0, score: 0, hp: 5, combo: 0, comboT: 0,
-    collected: [], obstacles: [], bullets: [], sparks: [], texts: [],
+    speed: 2, dist: 0, score: 0, hp: 5, combo: 0, comboT: 0, maxCombo: 0,
+    collected: [], obstacles: [], bullets: [], sparks: [], texts: [], vfx: [],
     stars, nebulae, trail: [], gridY: 0, frame: 0,
     shake: 0, flash: 0, flashC: "#00e45f", over: false,
     yearBanner: null, yearBannerT: 0, lastYear: "", curYear: "2022",
@@ -279,6 +280,7 @@ export default function App() {
   const [introPage, setIntroPage] = useState(0);
   const [playerName, setPlayerName] = useState("");
   const [endData, setEndData] = useState(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const [scores, setScores] = useState([]);
   const [loadingScores, setLoadingScores] = useState(false);
   const cvs = useRef(null);
@@ -324,7 +326,7 @@ export default function App() {
       const yi = Math.min(4, Math.floor(prog * 5));
       g.curYear = YEARS[yi];
       if (g.curYear !== g.lastYear) {
-        g.yearBanner = g.curYear; g.yearBannerT = 140; g.lastYear = g.curYear;
+        g.yearBanner = g.curYear; g.yearBannerT = 180; g.yearBannerMax = 180; g.lastYear = g.curYear;
         sfxYear();
       }
       if (g.yearBannerT > 0) g.yearBannerT--;
@@ -423,7 +425,7 @@ export default function App() {
 
         // Capture — pass through portal
         if (Math.abs(g.portal.y - g.y) < 40) {
-          g.combo++; g.comboT = 150;
+          g.combo++; g.comboT = 150; if (g.combo > g.maxCombo) g.maxCombo = g.combo;
           const mul = Math.min(5, g.combo) * g.scoreMultiplier;
           const p = Math.round(g.portal.pts * mul);
           g.score += p;
@@ -445,6 +447,12 @@ export default function App() {
 
           g.flash = 16; g.flashC = g.portal.c;
           g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 65, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: g.portal.name });
+          // F: Event quote — use the `news` field for narrative context
+          if (g.portal.news) {
+            g.texts.push({ x: W / 2, y: g.portal.y + 40, t: "", l: 110, c: g.portal.c, sub: "", big: "", news: g.portal.news });
+          }
+          // A: Narrative beat — category-specific VFX
+          g.vfx.push({ cat: g.portal.cat, t: 0, max: 95, c: g.portal.c });
           g.portal = null;
         } else if (g.portal.y > H + 40) {
           // MISSED — negative feedback
@@ -586,7 +594,7 @@ export default function App() {
             o.curHp = 0;
             if (g.hp <= 0) {
               g.over = true;
-              setEndData({ score: g.score, collected: g.collected, year: g.curYear, total: TIMELINE.length, name: nameRef.current });
+              setEndData({ score: g.score, collected: g.collected, year: g.curYear, total: TIMELINE.length, name: nameRef.current, maxCombo: g.maxCombo });
               submitScore(nameRef.current, g.score, g.collected, g.curYear);
               setScreen("end");
             }
@@ -610,14 +618,15 @@ export default function App() {
 
       if (g.comboT > 0) g.comboT--; else g.combo = 0;
       g.sparks = g.sparks.filter(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.vx *= 0.98; p.l--; return p.l > 0; });
-      g.texts = g.texts.filter(t => { t.y -= 1.2; t.l--; return t.l > 0; });
+      g.texts = g.texts.filter(t => { if (!t.news) t.y -= 1.2; t.l--; return t.l > 0; });
+      g.vfx = g.vfx.filter(v => { v.t++; return v.t < v.max; });
 
       // ─── BOSS ───
       if (g.dist >= TOTAL && g.mIdx >= TIMELINE.length && !g.portal && !g.bossPhase && !g.bossDefeated) {
         g.bossPhase = true;
         g.boss = { x: W / 2, y: -100, ty: 130, hp: 40, maxHp: 40, phase: 0, timer: 0, dead: false, deathT: 0, attackCD: 0, moveT: 0 };
         sfxBoss();
-        g.yearBanner = "AGI"; g.yearBannerT = 140;
+        g.yearBanner = "AGI"; g.yearBannerT = 180; g.yearBannerMax = 180;
       }
 
       if (g.boss && !g.boss.dead) {
@@ -670,7 +679,7 @@ export default function App() {
         }
         if (g.boss.deathT <= 0) {
           g.bossDefeated = true; g.over = true;
-          setEndData({ score: g.score, collected: g.collected, year: "2026", total: TIMELINE.length, name: nameRef.current, won: true, bossDefeated: true });
+          setEndData({ score: g.score, collected: g.collected, year: "2026", total: TIMELINE.length, name: nameRef.current, won: true, bossDefeated: true, maxCombo: g.maxCombo });
           submitScore(nameRef.current, g.score, g.collected, "2026");
           setScreen("end"); return;
         }
@@ -958,9 +967,100 @@ export default function App() {
       g.sparks.forEach(p => { ctx.globalAlpha = Math.max(0, p.l / 45); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalAlpha = 1;
 
+      // ═══ NARRATIVE VFX (category beats) ═══
+      g.vfx.forEach(v => {
+        const prog = v.t / v.max;
+        const fadeIn = Math.min(1, prog / 0.15);
+        const fadeOut = prog > 0.7 ? Math.max(0, (1 - prog) / 0.3) : 1;
+        const alpha = fadeIn * fadeOut;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+        if (v.cat === "model") {
+          // Expanding sparkle constellation — 12 ✦ in orbit
+          const r = 40 + prog * 220;
+          const cx = W / 2, cy = H * 0.42;
+          for (let i = 0; i < 12; i++) {
+            const a = (Math.PI * 2 / 12) * i + v.t * 0.03;
+            const px = cx + Math.cos(a) * r;
+            const py = cy + Math.sin(a) * r * 0.75;
+            ctx.globalAlpha = alpha * (0.6 + 0.4 * Math.sin(v.t * 0.15 + i));
+            ctx.font = "bold 26px system-ui, 'Courier New'";
+            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 18;
+            ctx.fillText("✦", px, py);
+          }
+        } else if (v.cat === "business") {
+          // Golden $ rain
+          for (let i = 0; i < 14; i++) {
+            const px = ((W / 14) * i) + (W / 28) + Math.sin(v.t * 0.04 + i) * 14;
+            const py = -30 + ((v.t * 3.5 + i * 57) % (H + 60));
+            ctx.globalAlpha = alpha * 0.9;
+            ctx.font = "bold 28px system-ui, 'Courier New'";
+            ctx.fillStyle = "#ffd94a"; ctx.shadowColor = "#ffb300"; ctx.shadowBlur = 12;
+            ctx.fillText("$", px, py);
+          }
+        } else if (v.cat === "policy") {
+          // EU stars — 12 in circle, flickering
+          const cx = W / 2, cy = H * 0.38;
+          const rad = 140 + Math.sin(v.t * 0.1) * 8;
+          for (let i = 0; i < 12; i++) {
+            const a = (Math.PI * 2 / 12) * i - Math.PI / 2 + v.t * 0.008;
+            const px = cx + Math.cos(a) * rad;
+            const py = cy + Math.sin(a) * rad * 0.85;
+            const flick = 0.55 + 0.45 * Math.sin(v.t * 0.25 + i * 0.7);
+            ctx.globalAlpha = alpha * flick;
+            ctx.font = "bold 30px system-ui, 'Courier New'";
+            ctx.fillStyle = "#ffd94a"; ctx.shadowColor = "#ffd94a"; ctx.shadowBlur = 14;
+            ctx.fillText("★", px, py);
+          }
+        } else if (v.cat === "culture") {
+          // Floating hearts/notes bubbling up
+          for (let i = 0; i < 10; i++) {
+            const baseX = W / 2 + (i - 4.5) * 55;
+            const px = baseX + Math.sin(v.t * 0.05 + i * 1.3) * 30;
+            const py = H * 0.9 - prog * H * 0.75 - (i * 13) % 60;
+            ctx.globalAlpha = alpha * (0.7 + 0.3 * Math.sin(v.t * 0.2 + i));
+            ctx.font = "bold 26px system-ui, 'Courier New'";
+            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 12;
+            ctx.fillText(i % 3 === 0 ? "♥" : i % 3 === 1 ? "♪" : "♫", px, py);
+          }
+        } else if (v.cat === "news") {
+          // Breaking-news lightning flashes
+          const flashes = [
+            { x: W * 0.18, y: H * 0.25, s: 62 },
+            { x: W * 0.82, y: H * 0.30, s: 54 },
+            { x: W * 0.50, y: H * 0.18, s: 72 },
+          ];
+          flashes.forEach((f, i) => {
+            const on = Math.sin(v.t * 0.4 + i * 2) > 0;
+            if (!on) return;
+            ctx.globalAlpha = alpha;
+            ctx.font = `bold ${f.s}px system-ui, 'Courier New'`;
+            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 22;
+            ctx.fillText("⚡", f.x, f.y);
+          });
+        }
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic";
+      });
+
       // Floating texts
       g.texts.forEach(t => {
         ctx.globalAlpha = Math.min(1, t.l / 15);
+        if (t.news) {
+          // News quote — wrapped, subtle, longer-lived
+          ctx.font = "italic 13px 'Courier New', monospace"; ctx.textAlign = "center";
+          const maxW = W - 60;
+          const words = t.news.split(" "); const lines = []; let cur = "";
+          for (const w of words) { const test = cur ? cur + " " + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
+          if (cur) lines.push(cur);
+          // Dark backdrop for readability
+          const lh = 18; const boxH = lines.length * lh + 14;
+          ctx.globalAlpha = Math.min(1, t.l / 20) * 0.55;
+          ctx.fillStyle = "#000"; ctx.fillRect(30, t.y - 14, W - 60, boxH);
+          ctx.globalAlpha = Math.min(1, t.l / 20);
+          ctx.fillStyle = t.c;
+          lines.forEach((ln, i) => ctx.fillText(ln, t.x, t.y + i * lh));
+          return;
+        }
         if (t.big) { ctx.font = "bold 24px 'Courier New', monospace"; ctx.fillStyle = t.c + "50"; ctx.textAlign = "center"; ctx.fillText(t.big, t.x, t.y - 35); }
         ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = t.c; ctx.textAlign = "center"; ctx.fillText(t.t, t.x, t.y);
         if (t.sub) { ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(t.sub, t.x, t.y - 20); }
@@ -1069,18 +1169,84 @@ export default function App() {
         ctx.fillText("✓ " + g.collected.length + "/" + TIMELINE.length, W - 14, H - 10);
       }
 
-      // Year banner
+      // ═══ CINEMATIC YEAR TRANSITION ═══
       if (g.yearBannerT > 0 && g.yearBanner) {
-        const ba = g.yearBannerT > 110 ? (140 - g.yearBannerT) / 30 : g.yearBannerT < 30 ? g.yearBannerT / 30 : 1;
-        ctx.globalAlpha = ba * 0.9;
+        const max = g.yearBannerMax || 180;
+        const elapsed = max - g.yearBannerT;
+        const phaseIn = 35, phaseOut = 35;
+        // Envelope 0→1→0
+        const env = elapsed < phaseIn ? elapsed / phaseIn : g.yearBannerT < phaseOut ? g.yearBannerT / phaseOut : 1;
         const isAGI = g.yearBanner === "AGI";
-        ctx.font = "bold 80px 'Courier New', monospace";
-        ctx.fillStyle = isAGI ? "#ff3366" : "#00e45f"; ctx.textAlign = "center";
-        ctx.shadowColor = isAGI ? "#ff3366" : "#00e45f"; ctx.shadowBlur = 50;
-        ctx.fillText(g.yearBanner, W / 2, H / 2 - 15);
+        const mainC = isAGI ? "#ff3366" : "#00e45f";
+        const subC = isAGI ? "#ff6b9d" : "#b8d4f5";
+
+        // 1) Dark vignette overlay
+        ctx.globalAlpha = env * 0.62;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
+
+        // 2) Letterbox bars (top + bottom) slide in
+        const barH = 78;
+        const barOff = (1 - env) * barH;
+        ctx.globalAlpha = env;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, -barOff, W, barH);
+        ctx.fillRect(0, H - barH + barOff, W, barH);
+
+        // 3) Accent lines on bars
+        ctx.globalAlpha = env * 0.8;
+        ctx.fillStyle = mainC + "80";
+        ctx.fillRect(0, barH - barOff - 2, W, 2);
+        ctx.fillRect(0, H - barH + barOff, W, 2);
+
+        // 4) Horizontal sweep rays behind text (procedural)
+        ctx.globalAlpha = env * 0.22;
+        for (let i = 0; i < 8; i++) {
+          const ry = H / 2 - 80 + i * 20;
+          const rw = (elapsed * 18 + i * 50) % (W * 1.4);
+          const grad = ctx.createLinearGradient(W / 2 - rw / 2, ry, W / 2 + rw / 2, ry);
+          grad.addColorStop(0, "transparent"); grad.addColorStop(0.5, mainC); grad.addColorStop(1, "transparent");
+          ctx.fillStyle = grad;
+          ctx.fillRect(W / 2 - rw / 2, ry, rw, 1.5);
+        }
+
+        // 5) Year text — huge, with glow
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        const yScale = 0.94 + env * 0.08;
+        ctx.save();
+        ctx.translate(W / 2, H / 2 - 10);
+        ctx.scale(yScale, yScale);
+        ctx.globalAlpha = env;
+        ctx.font = "bold 110px 'Courier New', monospace";
+        ctx.fillStyle = mainC;
+        ctx.shadowColor = mainC; ctx.shadowBlur = 55;
+        ctx.fillText(g.yearBanner, 0, 0);
         ctx.shadowBlur = 0;
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = isAGI ? "#ff6b9d" : "#b8d4f5";
-        ctx.fillText(isAGI ? "FINAL BOSS — DESTROY THE SINGULARITY" : (YEAR_SUBS[g.yearBanner] || ""), W / 2, H / 2 + 25);
+        ctx.restore();
+
+        // 6) Subtitle (era name)
+        ctx.globalAlpha = env;
+        ctx.font = "bold 20px 'Courier New', monospace"; ctx.fillStyle = mainC; ctx.textAlign = "center";
+        ctx.shadowColor = mainC; ctx.shadowBlur = 14;
+        ctx.fillText(isAGI ? "FINAL BOSS" : (YEAR_SUBS[g.yearBanner] || ""), W / 2, H / 2 + 30);
+        ctx.shadowBlur = 0;
+
+        // 7) Tagline (poetic one-liner)
+        ctx.globalAlpha = env * 0.85;
+        ctx.font = "italic 15px 'Courier New', monospace"; ctx.fillStyle = subC;
+        ctx.fillText(isAGI ? "— DESTROY THE SINGULARITY —" : "— " + (YEAR_TAGLINES[g.yearBanner] || "") + " —", W / 2, H / 2 + 58);
+
+        // 8) Progress tick marks (chapter indicator)
+        const yi = YEARS.indexOf(g.yearBanner);
+        if (yi >= 0 && !isAGI) {
+          ctx.globalAlpha = env * 0.55;
+          for (let i = 0; i < 5; i++) {
+            const tx = W / 2 + (i - 2) * 24;
+            ctx.fillStyle = i === yi ? mainC : subC;
+            ctx.beginPath(); ctx.arc(tx, H / 2 + 88, i === yi ? 5 : 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
         ctx.globalAlpha = 1;
       }
 
@@ -1277,27 +1443,96 @@ export default function App() {
   if (screen === "end" && endData) {
     const won = endData.won;
     const pct = Math.round(endData.collected.length / endData.total * 100);
+
+    // Category breakdown
+    const catCount = { model: 0, business: 0, policy: 0, culture: 0, news: 0 };
+    endData.collected.forEach(m => { if (catCount[m.cat] !== undefined) catCount[m.cat]++; });
+    const totalCol = endData.collected.length || 1;
+    const topCat = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0];
+
+    // Archetype — playful title based on dominant category
+    const ARCHETYPES = {
+      model: { title: "MODEL HUNTER", desc: "Je jaagt op doorbraken" },
+      business: { title: "DEAL MAKER", desc: "Je volgt het geld" },
+      policy: { title: "POLICY WONK", desc: "Regulering is je ding" },
+      culture: { title: "CULTURE MAVEN", desc: "Jij voelt de tijdgeest" },
+      news: { title: "NEWS HOUND", desc: "Geen nieuws ontgaat jou" },
+    };
+    const archetype = (topCat && topCat[1] > 0) ? (ARCHETYPES[topCat[0]] || ARCHETYPES.model) : { title: "ROOKIE", desc: "Net begonnen" };
+    const archColor = topCat && topCat[1] > 0 ? (CAT_COLORS[topCat[0]] || "#00e45f") : "#6b9fe8";
+
+    // Share text
+    const shareText = `${nameRef.current || "Speler"} — ${archetype.title}\n${endData.collected.length}/${endData.total} AI-events • Score: ${endData.score.toLocaleString()}\n${won ? (endData.bossDefeated ? "AGI verslagen 🏆" : "2026 bereikt ⭐") : "Gestrand in " + endData.year}\n\nSpeel zelf: https://ai-racer-taupe.vercel.app`;
+
     return (
       <div style={S.page}>
         <AnimatedBG />
-        <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "1.5rem", maxWidth: 500 }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: ".5rem", color: won ? "#00e45f" : "#ff4d6a", ...S.glow(won ? "#00e45f" : "#ff4d6a", 40) }}>{won ? "★ ★ ★" : "— X —"}</div>
-          <div style={{ fontSize: "clamp(1.2rem, 4vw, 2rem)", fontWeight: 900, marginBottom: ".3rem" }}>
-            {won ? (endData.bossDefeated ? <span style={{ color: "#00e45f" }}>AGI VERSLAGEN!</span> : <span style={{ color: "#00e45f" }}>2026 BEREIKT!</span>) : (<>GESTRAND IN <span style={{ color: "#ff4d6a" }}>{endData.year}</span></>)}
+        <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "1.5rem", maxWidth: 560, width: "100%" }}>
+          {/* Header */}
+          <div style={{ fontSize: "2rem", marginBottom: ".3rem", color: won ? "#00e45f" : "#ff4d6a", ...S.glow(won ? "#00e45f" : "#ff4d6a", 40) }}>{won ? "★ ★ ★" : "— X —"}</div>
+          <div style={{ fontSize: "clamp(1.1rem, 4vw, 1.6rem)", fontWeight: 900, marginBottom: ".3rem", letterSpacing: ".05em" }}>
+            {won ? (endData.bossDefeated ? <span style={{ color: "#00e45f" }}>AGI VERSLAGEN</span> : <span style={{ color: "#00e45f" }}>2026 BEREIKT</span>) : (<>GESTRAND IN <span style={{ color: "#ff4d6a" }}>{endData.year}</span></>)}
           </div>
-          {won && <div style={{ fontSize: "1rem", color: "#ffd700", marginBottom: ".5rem" }}>De toekomst van AI is veilig</div>}
-          <div style={{ fontSize: "1rem", color: "rgba(240,244,249,.4)", marginBottom: ".8rem" }}>{nameRef.current}</div>
-          <div style={{ fontSize: "clamp(2.5rem, 7vw, 3.5rem)", fontWeight: 900, color: "#00e45f", ...S.glow("#00e45f", 30) }}>{endData.score.toLocaleString()}</div>
-          <div style={{ fontSize: ".7rem", color: "rgba(240,244,249,.25)", letterSpacing: ".2em", marginBottom: "1rem" }}>PUNTEN</div>
-          <div style={{ fontSize: "0.9rem", color: "rgba(240,244,249,.4)", marginBottom: ".8rem" }}>{endData.collected.length}/{endData.total} events verzameld ({pct}%)</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: ".3rem", justifyContent: "center", maxWidth: 480, margin: "0 auto 1.5rem" }}>
+
+          {/* Name */}
+          <div style={{ fontSize: ".9rem", color: "rgba(240,244,249,.55)", marginBottom: ".8rem", letterSpacing: ".1em" }}>{nameRef.current}</div>
+
+          {/* Archetype card */}
+          <div style={{ display: "inline-block", padding: ".6rem 1.4rem", margin: "0 0 1.1rem", border: "1.5px solid " + archColor + "60", borderRadius: 8, background: archColor + "0c", ...S.glow(archColor, 18) }}>
+            <div style={{ fontSize: ".65rem", color: "rgba(240,244,249,.35)", letterSpacing: ".25em", marginBottom: ".15rem" }}>JOUW STIJL</div>
+            <div style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)", fontWeight: 900, color: archColor, letterSpacing: ".1em" }}>{archetype.title}</div>
+            <div style={{ fontSize: ".75rem", color: "rgba(240,244,249,.5)", marginTop: ".15rem" }}>{archetype.desc}</div>
+          </div>
+
+          {/* Big score */}
+          <div style={{ fontSize: "clamp(2.8rem, 8vw, 4rem)", fontWeight: 900, color: "#00e45f", ...S.glow("#00e45f", 30), lineHeight: 1 }}>{endData.score.toLocaleString()}</div>
+          <div style={{ fontSize: ".65rem", color: "rgba(240,244,249,.3)", letterSpacing: ".25em", marginBottom: "1rem" }}>PUNTEN</div>
+
+          {/* Stats strip */}
+          <div style={{ display: "flex", justifyContent: "center", gap: ".4rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+            <div style={{ padding: ".4rem .7rem", border: "1px solid rgba(107,159,232,.2)", borderRadius: 6, background: "rgba(107,159,232,.04)" }}>
+              <div style={{ fontSize: ".6rem", color: "rgba(240,244,249,.4)", letterSpacing: ".15em" }}>EVENTS</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#6b9fe8" }}>{endData.collected.length}/{endData.total}</div>
+            </div>
+            <div style={{ padding: ".4rem .7rem", border: "1px solid rgba(255,217,74,.2)", borderRadius: 6, background: "rgba(255,217,74,.04)" }}>
+              <div style={{ fontSize: ".6rem", color: "rgba(240,244,249,.4)", letterSpacing: ".15em" }}>MAX COMBO</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#ffd94a" }}>{endData.maxCombo || 0}x</div>
+            </div>
+            <div style={{ padding: ".4rem .7rem", border: "1px solid rgba(0,228,95,.2)", borderRadius: 6, background: "rgba(0,228,95,.04)" }}>
+              <div style={{ fontSize: ".6rem", color: "rgba(240,244,249,.4)", letterSpacing: ".15em" }}>COMPLEET</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#00e45f" }}>{pct}%</div>
+            </div>
+          </div>
+
+          {/* Category breakdown bar */}
+          {endData.collected.length > 0 && (
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ fontSize: ".6rem", color: "rgba(240,244,249,.35)", letterSpacing: ".2em", marginBottom: ".4rem" }}>CATEGORIE-VERDELING</div>
+              <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", border: "1px solid rgba(107,159,232,.15)", background: "rgba(10,18,34,.6)" }}>
+                {Object.entries(catCount).map(([cat, n]) => n > 0 ? (
+                  <div key={cat} style={{ width: `${(n / totalCol) * 100}%`, background: CAT_COLORS[cat], opacity: 0.85 }} title={`${cat}: ${n}`} />
+                ) : null)}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: ".8rem", flexWrap: "wrap", marginTop: ".5rem", fontSize: ".65rem" }}>
+                {Object.entries(catCount).map(([cat, n]) => n > 0 ? (
+                  <span key={cat} style={{ color: CAT_COLORS[cat] }}>● <span style={{ color: "rgba(240,244,249,.55)" }}>{cat} {n}</span></span>
+                ) : null)}
+              </div>
+            </div>
+          )}
+
+          {/* Collected chips */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: ".25rem", justifyContent: "center", maxWidth: 500, margin: "0 auto 1.2rem" }}>
             {endData.collected.map((m, i) => (
-              <span key={i} style={{ padding: ".2rem .5rem", fontSize: ".65rem", borderRadius: 4, border: "1px solid " + (CAT_COLORS[m.cat] || "#6b9fe8") + "30", background: (CAT_COLORS[m.cat] || "#6b9fe8") + "0a", color: CAT_COLORS[m.cat] || "#6b9fe8" }}>{m.name}</span>
+              <span key={i} style={{ padding: ".15rem .45rem", fontSize: ".6rem", borderRadius: 3, border: "1px solid " + (CAT_COLORS[m.cat] || "#6b9fe8") + "40", background: (CAT_COLORS[m.cat] || "#6b9fe8") + "0c", color: CAT_COLORS[m.cat] || "#6b9fe8" }}>{m.name}</span>
             ))}
           </div>
-          <div style={{ display: "flex", gap: ".8rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={startGame} style={{ padding: "1rem 2.5rem", border: "2px solid #00e45f", borderRadius: 8, background: "rgba(0,228,95,0.06)", color: "#00e45f", fontSize: "1rem", fontWeight: 700, fontFamily: "'Courier New', monospace", cursor: "pointer", letterSpacing: ".15em" }}>OPNIEUW</button>
-            <button onClick={() => { loadScores(); setScreen("board"); }} style={{ padding: "1rem 2rem", border: "1px solid rgba(107,159,232,0.3)", borderRadius: 8, background: "rgba(107,159,232,0.04)", color: "#6b9fe8", fontSize: "1rem", fontWeight: 700, fontFamily: "'Courier New', monospace", cursor: "pointer", letterSpacing: ".15em" }}>LEADERBOARD</button>
+
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: ".6rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={startGame} style={{ padding: ".9rem 2rem", border: "2px solid #00e45f", borderRadius: 8, background: "rgba(0,228,95,0.06)", color: "#00e45f", fontSize: ".95rem", fontWeight: 700, fontFamily: "'Courier New', monospace", cursor: "pointer", letterSpacing: ".15em" }}>OPNIEUW</button>
+            <button onClick={() => { loadScores(); setScreen("board"); }} style={{ padding: ".9rem 1.6rem", border: "1px solid rgba(107,159,232,0.3)", borderRadius: 8, background: "rgba(107,159,232,0.04)", color: "#6b9fe8", fontSize: ".95rem", fontWeight: 700, fontFamily: "'Courier New', monospace", cursor: "pointer", letterSpacing: ".15em" }}>LEADERBOARD</button>
+            <button onClick={() => { try { navigator.clipboard.writeText(shareText); setShareCopied(true); setTimeout(() => setShareCopied(false), 1800); } catch (e) {} }} style={{ padding: ".9rem 1.6rem", border: "1px solid " + archColor + "60", borderRadius: 8, background: archColor + "10", color: archColor, fontSize: ".95rem", fontWeight: 700, fontFamily: "'Courier New', monospace", cursor: "pointer", letterSpacing: ".15em" }}>{shareCopied ? "✓ GEKOPIEERD" : "DELEN"}</button>
           </div>
         </div>
       </div>
