@@ -182,7 +182,7 @@ function createGame() {
     puSpawnT: 200 + Math.floor(Math.random() * 150),
     // Boss
     boss: null, bossPhase: false, bossDefeated: false,
-    shipLevel: 0,
+    shipLevel: 0, shipUpgradeT: 0,
     rockets: [],
     // Hints
     hintMove: 180, hintShoot: 250, hintMoved: false, hintShot: false,
@@ -200,10 +200,62 @@ function drawHex(ctx, x, y, r) {
 
 function drawShip(ctx, g, x, y) {
   const lvl = g.shipLevel;
+
+  // ═══ Drone companions (lvl 3+ = 2025 "Year of Agents") drawn in world space ═══
+  if (lvl >= 3) {
+    const dcount = lvl >= 4 ? 3 : 2;
+    for (let i = 0; i < dcount; i++) {
+      const a = g.frame * 0.04 + (Math.PI * 2 / dcount) * i;
+      const r = 32 + lvl * 2;
+      const dx = x + Math.cos(a) * r;
+      const dy = y + Math.sin(a) * 8;
+      ctx.save();
+      ctx.translate(dx, dy);
+      // thin connecting line
+      ctx.strokeStyle = "rgba(255,217,74,0.15)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(x - dx, y - dy); ctx.stroke();
+      // drone body
+      const pulse = 0.6 + 0.4 * Math.sin(g.frame * 0.2 + i);
+      ctx.shadowColor = "#ffd94a"; ctx.shadowBlur = 10 * pulse;
+      ctx.fillStyle = "#ffd94a";
+      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#fff3a0"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.stroke();
+      // tiny wings
+      ctx.fillStyle = "rgba(255,217,74,0.6)";
+      ctx.fillRect(-9, -1, 6, 2);
+      ctx.fillRect(3, -1, 6, 2);
+      ctx.restore();
+    }
+  }
+
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(g.tilt);
 
+  // ═══ Upgrade flash halo ═══
+  if (g.shipUpgradeT > 0) {
+    const up = g.shipUpgradeT / 90;
+    const rr = 30 + (1 - up) * 80;
+    ctx.globalAlpha = up * 0.8;
+    ctx.strokeStyle = "#00e45f"; ctx.lineWidth = 3;
+    ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 25;
+    ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    // sparkles
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI * 2 / 6) * i + g.frame * 0.1;
+      const sr = 25 + (1 - up) * 40;
+      ctx.globalAlpha = up;
+      ctx.fillStyle = "#00e45f"; ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 15;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * sr, Math.sin(a) * sr, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ═══ Shield ═══
   if (g.shieldActive) {
     ctx.strokeStyle = `rgba(0,228,95,${0.25 + Math.sin(g.frame * 0.1) * 0.1})`;
     ctx.lineWidth = 2;
@@ -212,10 +264,13 @@ function drawShip(ctx, g, x, y) {
     ctx.beginPath(); ctx.arc(0, 0, 32 + lvl * 2, 0, Math.PI * 2); ctx.fill();
   }
 
+  // ═══ Main thruster flame — color shifts per year ═══
   const flameH = 24 + Math.sin(g.frame * 0.5) * 8 + g.speed * 2 + lvl * 3;
-  const fc = g.shieldActive ? "0,228,95" : "107,159,232";
+  // Flame colour per era: blue → blue → purple → gold-tinted → gold
+  const flameCols = ["107,159,232", "107,159,232", "180,130,230", "255,180,80", "255,215,60"];
+  const fc = g.shieldActive ? "0,228,95" : flameCols[lvl] || flameCols[0];
   const fg = ctx.createLinearGradient(0, 16, 0, 16 + flameH);
-  fg.addColorStop(0, `rgba(${fc},0.7)`); fg.addColorStop(0.5, `rgba(${fc},0.2)`); fg.addColorStop(1, "transparent");
+  fg.addColorStop(0, `rgba(${fc},0.75)`); fg.addColorStop(0.5, `rgba(${fc},0.22)`); fg.addColorStop(1, "transparent");
   ctx.fillStyle = fg;
   ctx.beginPath();
   ctx.moveTo(-10 - lvl, 20); ctx.lineTo(10 + lvl, 20);
@@ -223,34 +278,74 @@ function drawShip(ctx, g, x, y) {
   ctx.lineTo(-3 + Math.sin(g.frame * 0.3 + 1) * 3, 20 + flameH);
   ctx.fill();
 
+  // ═══ Side thrusters — appear from 2024 (lvl 2) "Reasoning Era" ═══
   if (lvl >= 2) {
-    ctx.fillStyle = "rgba(212,160,255,0.2)";
+    ctx.fillStyle = lvl >= 4 ? "rgba(255,215,60,0.35)" : "rgba(212,160,255,0.28)";
     ctx.beginPath(); ctx.moveTo(-20 - lvl, 16); ctx.lineTo(-14, 16); ctx.lineTo(-16, 16 + flameH * 0.4); ctx.fill();
     ctx.beginPath(); ctx.moveTo(20 + lvl, 16); ctx.lineTo(14, 16); ctx.lineTo(16, 16 + flameH * 0.4); ctx.fill();
   }
 
+  // ═══ Body — grows & gets richer per year ═══
   const bw = 18 + lvl * 2, bh = 26 + lvl * 2;
   const sg = ctx.createLinearGradient(0, -bh, 0, 22);
-  sg.addColorStop(0, "#8bb8f0"); sg.addColorStop(0.3, "#5a8fd4"); sg.addColorStop(0.7, "#3d6abf"); sg.addColorStop(1, "#1e3a6e");
-  ctx.fillStyle = sg; ctx.strokeStyle = "#b8d4f5"; ctx.lineWidth = 1.5;
+  if (lvl >= 4) {
+    // 2026 — gold-tinted frontier ship
+    sg.addColorStop(0, "#ffe699"); sg.addColorStop(0.3, "#d4a544"); sg.addColorStop(0.7, "#8a5a1a"); sg.addColorStop(1, "#3a2608");
+  } else if (lvl === 3) {
+    // 2025 — blue-gold hybrid (agents era)
+    sg.addColorStop(0, "#a8c8f0"); sg.addColorStop(0.3, "#7a9dd4"); sg.addColorStop(0.7, "#5a4d8a"); sg.addColorStop(1, "#2a1e4a");
+  } else if (lvl === 2) {
+    // 2024 — purple accents (reasoning)
+    sg.addColorStop(0, "#a8b8f0"); sg.addColorStop(0.3, "#7a7dd4"); sg.addColorStop(0.7, "#5a4abf"); sg.addColorStop(1, "#2a1e6e");
+  } else {
+    // 2022/2023 — blue scout
+    sg.addColorStop(0, "#8bb8f0"); sg.addColorStop(0.3, "#5a8fd4"); sg.addColorStop(0.7, "#3d6abf"); sg.addColorStop(1, "#1e3a6e");
+  }
+  ctx.fillStyle = sg; ctx.strokeStyle = lvl >= 4 ? "#ffe699" : "#b8d4f5"; ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, -bh); ctx.lineTo(-9, -bh + 16); ctx.lineTo(-bw, 20); ctx.lineTo(-10, 15); ctx.lineTo(0, 22); ctx.lineTo(10, 15); ctx.lineTo(bw, 20); ctx.lineTo(9, -bh + 16);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 
-  if (lvl >= 3) {
-    ctx.fillStyle = "#3d6abf"; ctx.strokeStyle = "#6b9fe8"; ctx.lineWidth = 1;
+  // ═══ Extra wing extensions — from lvl 2 (2024) ═══
+  if (lvl >= 2) {
+    ctx.fillStyle = lvl >= 4 ? "#8a5a1a" : lvl === 3 ? "#5a4d8a" : "#3d6abf";
+    ctx.strokeStyle = lvl >= 4 ? "#ffd94a" : "#6b9fe8"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(-bw, 20); ctx.lineTo(-bw - 10, 14); ctx.lineTo(-bw - 6, 6); ctx.lineTo(-14, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bw, 20); ctx.lineTo(bw + 10, 14); ctx.lineTo(bw + 6, 6); ctx.lineTo(14, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 
-  const cockC = g.shieldActive ? "#00e45f" : lvl >= 4 ? "#ffd700" : "#6b9fe8";
-  ctx.fillStyle = cockC; ctx.shadowColor = cockC; ctx.shadowBlur = 14;
-  ctx.beginPath(); ctx.arc(0, -8, 5.5 + lvl * 0.5, 0, Math.PI * 2); ctx.fill();
+  // ═══ Tech panels (reasoning circuitry) — from lvl 2 ═══
+  if (lvl >= 2) {
+    ctx.strokeStyle = lvl >= 4 ? "rgba(255,217,74,0.5)" : "rgba(180,130,230,0.4)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-5, -bh + 10); ctx.lineTo(-5, 0); ctx.lineTo(-2, 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, -bh + 10); ctx.lineTo(5, 0); ctx.lineTo(2, 3); ctx.stroke();
+  }
+
+  // ═══ Cockpit — colour intensifies per year ═══
+  const cockC = g.shieldActive ? "#00e45f" : lvl >= 4 ? "#ffd700" : lvl === 3 ? "#ffc857" : lvl === 2 ? "#d4a0ff" : "#6b9fe8";
+  ctx.fillStyle = cockC; ctx.shadowColor = cockC; ctx.shadowBlur = 14 + lvl * 2;
+  ctx.beginPath(); ctx.arc(0, -8, 5.5 + lvl * 0.6, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
 
-  ctx.strokeStyle = "rgba(184,212,245,0.2)"; ctx.lineWidth = 1;
+  // Cockpit highlight
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.beginPath(); ctx.arc(-1.5, -10, 1.5 + lvl * 0.2, 0, Math.PI * 2); ctx.fill();
+
+  // Body seam lines
+  ctx.strokeStyle = "rgba(184,212,245,0.22)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-bw + 3, 17); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(bw - 3, 17); ctx.stroke();
+
+  // ═══ Frontier aura — lvl 4 (2026) ═══
+  if (lvl >= 4) {
+    const auraP = 0.35 + 0.15 * Math.sin(g.frame * 0.12);
+    ctx.globalAlpha = auraP;
+    ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 1.2;
+    ctx.shadowColor = "#ffd700"; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  }
 
   ctx.restore();
 }
@@ -328,10 +423,14 @@ export default function App() {
       if (g.curYear !== g.lastYear) {
         g.yearBanner = g.curYear; g.yearBannerT = 180; g.yearBannerMax = 180; g.lastYear = g.curYear;
         sfxYear();
+        // Ship upgrade moment
+        if (g.lastYear !== "") { g.shipUpgradeT = 90; }
       }
       if (g.yearBannerT > 0) g.yearBannerT--;
+      if (g.shipUpgradeT > 0) g.shipUpgradeT--;
 
-      g.shipLevel = Math.min(4, Math.floor(g.collected.length / 8));
+      // Ship level tied to the current year (2022=0 ... 2026=4)
+      g.shipLevel = Math.max(0, YEARS.indexOf(g.curYear));
 
       // Powerup timers
       if (g.weaponT > 0) { g.weaponT--; if (g.weaponT <= 0) g.weapon = "laser"; }
@@ -364,6 +463,15 @@ export default function App() {
       if (wantShoot) g.hintShot = true;
       if (wantShoot && g.shootCD <= 0) {
         sfxShoot();
+        // Drone companions fire along with you (lvl 3+ = 2025+)
+        if (g.shipLevel >= 3) {
+          const droneA = g.frame * 0.04;
+          const r = 32 + g.shipLevel * 2;
+          const dx1 = Math.cos(droneA) * r, dx2 = Math.cos(droneA + Math.PI) * r;
+          const dy1 = Math.sin(droneA) * 8, dy2 = Math.sin(droneA + Math.PI) * 8;
+          g.bullets.push({ x: g.x + dx1, y: g.y + dy1, vx: 0, vy: -11, c: "#ffd94a", s: 2.5, drone: true });
+          g.bullets.push({ x: g.x + dx2, y: g.y + dy2, vx: 0, vy: -11, c: "#ffd94a", s: 2.5, drone: true });
+        }
         if (g.weapon === "triple") {
           g.shootCD = 10;
           g.bullets.push({ x: g.x - 8, y: g.y - 22, vx: -2, vy: -13, c: "#45b7d1", s: 3.5 });
@@ -466,7 +574,7 @@ export default function App() {
 
       // ─── WAVE SYSTEM (decoupled from portals) ───
       if (!g.bossPhase) {
-        if (g.waveWarnT > 0 && !g.portal) g.waveWarnT--;
+        if (g.waveWarnT > 0) g.waveWarnT--;
 
         if (!g.waveActive) {
           if (!g.portal) g.waveCD--;
