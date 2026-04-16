@@ -413,18 +413,24 @@ export default function App() {
       g.frame++;
       const TOTAL = 16000;
 
-      g.speed = Math.min(6, 2 + g.dist * 0.00015);
-      g.dist += g.speed;
+      const realSpeed = Math.min(6, 2 + g.dist * 0.00015);
+      // Year transition pause — freeze timeline + world motion
+      const yearPaused = g.yearBannerT > 30 && g.yearBanner !== "AGI";
+      g.speed = yearPaused ? 0 : realSpeed;
+      if (!yearPaused) g.dist += g.speed;
       const prog = Math.min(1, g.dist / TOTAL);
 
       // Year
       const yi = Math.min(4, Math.floor(prog * 5));
-      g.curYear = YEARS[yi];
-      if (g.curYear !== g.lastYear) {
-        g.yearBanner = g.curYear; g.yearBannerT = 180; g.yearBannerMax = 180; g.lastYear = g.curYear;
+      const newYear = YEARS[yi];
+      if (newYear !== g.lastYear) {
+        const isFirstYear = g.lastYear === "";
+        g.curYear = newYear;
+        g.yearBanner = newYear; g.yearBannerT = 180; g.yearBannerMax = 180; g.lastYear = newYear;
         sfxYear();
-        // Ship upgrade moment
-        if (g.lastYear !== "") { g.shipUpgradeT = 90; }
+        if (!isFirstYear) { g.shipUpgradeT = 90; }
+      } else {
+        g.curYear = newYear;
       }
       if (g.yearBannerT > 0) g.yearBannerT--;
       if (g.shipUpgradeT > 0) g.shipUpgradeT--;
@@ -518,7 +524,7 @@ export default function App() {
       g.nebulae.forEach(n => { n.y += n.v * g.speed * 0.2; if (n.y > H + n.r) { n.y = -n.r; n.x = Math.random() * W; } });
 
       // ─── PORTAL SPAWNING (smooth, no freeze) ───
-      if (!g.portal && g.mIdx < TIMELINE.length && !g.bossPhase) {
+      if (!g.portal && g.mIdx < TIMELINE.length && !g.bossPhase && !yearPaused) {
         const nextDist = (g.mIdx + 1) * (TOTAL / (TIMELINE.length + 3));
         if (g.dist >= nextDist) {
           const m = TIMELINE[g.mIdx];
@@ -540,27 +546,18 @@ export default function App() {
           g.collected.push(g.portal);
           sfxCollect();
 
-          // Micro-freeze for impact
-          g.freezeT = 4;
-
-          // BIG particle burst along full width
-          for (let j = 0; j < 50; j++) {
-            g.sparks.push({ x: Math.random() * W, y: g.portal.y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 7 - 3, l: 45, c: g.portal.c, s: Math.random() * 4 + 2 });
-          }
-          // Burst around player
-          for (let j = 0; j < 25; j++) {
-            const a = (Math.PI * 2 / 25) * j;
-            g.sparks.push({ x: g.x, y: g.y, vx: Math.cos(a) * (4 + Math.random() * 4), vy: Math.sin(a) * (4 + Math.random() * 4), l: 35, c: g.portal.c, s: Math.random() * 4 + 1.5 });
+          // Subtle burst around player only — no more full-width flood
+          for (let j = 0; j < 14; j++) {
+            const a = (Math.PI * 2 / 14) * j;
+            g.sparks.push({ x: g.x, y: g.y, vx: Math.cos(a) * (3 + Math.random() * 2), vy: Math.sin(a) * (3 + Math.random() * 2), l: 26, c: g.portal.c, s: Math.random() * 2.2 + 1 });
           }
 
-          g.flash = 16; g.flashC = g.portal.c;
-          g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 65, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: g.portal.name });
-          // F: Event quote — use the `news` field for narrative context
+          g.flash = 8; g.flashC = g.portal.c;
+          g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 55, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: "" });
+          // F: Event quote — shorter, not a big backdrop
           if (g.portal.news) {
-            g.texts.push({ x: W / 2, y: g.portal.y + 40, t: "", l: 110, c: g.portal.c, sub: "", big: "", news: g.portal.news });
+            g.texts.push({ x: W / 2, y: g.portal.y + 28, t: "", l: 80, c: g.portal.c, sub: "", big: "", news: g.portal.news });
           }
-          // A: Narrative beat — category-specific VFX
-          g.vfx.push({ cat: g.portal.cat, t: 0, max: 95, c: g.portal.c });
           g.portal = null;
         } else if (g.portal.y > H + 40) {
           // MISSED — negative feedback
@@ -573,12 +570,12 @@ export default function App() {
       }
 
       // ─── WAVE SYSTEM (decoupled from portals) ───
-      if (!g.bossPhase) {
+      if (!g.bossPhase && !yearPaused) {
         if (g.waveWarnT > 0) g.waveWarnT--;
 
         if (!g.waveActive) {
-          if (!g.portal) g.waveCD--;
-          if (g.waveCD <= 0 && !g.portal) {
+          g.waveCD--;
+          if (g.waveCD <= 0) {
             g.waveNum++;
             const theme = WAVE_THEMES[Math.floor(Math.random() * WAVE_THEMES.length)];
             const form = FORMATIONS[Math.floor(Math.random() * FORMATIONS.length)]();
@@ -646,10 +643,6 @@ export default function App() {
         else if (o.pattern === "dive" && o.age > 30) { o.x += (g.x - o.x) * 0.035; o.y += 1.5; }
         else if (o.pattern === "bounce") { o.x = o.startX + Math.sin(o.age * 0.055) * 65; if (o.x < 30 || o.x > W - 30) o.startX = W / 2; }
         o.x = Math.max(25, Math.min(W - 25, o.x));
-        // Push enemies away from portal so they don't visually overlap
-        if (g.portal && Math.abs(o.y - g.portal.y) < 60) {
-          o.y += (o.y < g.portal.y ? -2.5 : 2.5);
-        }
         return o.y < H + 60;
       });
 
