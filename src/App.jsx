@@ -782,7 +782,7 @@ export default function App() {
       if (g.portal) {
         const p = g.portal;
         const pulse = Math.sin(p.pulse * 0.08);
-        const gateH = 70;
+        const gateH = 82;
         const gateTop = p.y - gateH / 2;
         const gateBot = p.y + gateH / 2;
 
@@ -837,10 +837,10 @@ export default function App() {
         // ─── Text INSIDE the gate ───
         ctx.textAlign = "center";
         ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 18;
-        ctx.font = "bold 16px 'Courier New', monospace";
-        ctx.fillText(p.name, W / 2, p.y - 4);
-        ctx.font = "13px 'Courier New', monospace";
-        ctx.fillText(p.sub, W / 2, p.y + 18);
+        ctx.font = "bold 22px 'Courier New', monospace";
+        ctx.fillText(p.name, W / 2, p.y - 2);
+        ctx.font = "bold 15px 'Courier New', monospace";
+        ctx.fillText(p.sub, W / 2, p.y + 22);
         ctx.shadowBlur = 0;
       }
 
