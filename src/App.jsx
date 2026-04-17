@@ -782,7 +782,7 @@ export default function App() {
       if (g.portal) {
         const p = g.portal;
         const pulse = Math.sin(p.pulse * 0.08);
-        const gateH = 82;
+        const gateH = 90;
         const gateTop = p.y - gateH / 2;
         const gateBot = p.y + gateH / 2;
 
@@ -837,10 +837,10 @@ export default function App() {
         // ─── Text INSIDE the gate ───
         ctx.textAlign = "center";
         ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 18;
-        ctx.font = "bold 22px 'Courier New', monospace";
+        ctx.font = "bold 24px 'Courier New', monospace";
         ctx.fillText(p.name, W / 2, p.y - 2);
-        ctx.font = "bold 15px 'Courier New', monospace";
-        ctx.fillText(p.sub, W / 2, p.y + 22);
+        ctx.font = "bold 18px 'Courier New', monospace";
+        ctx.fillText(p.sub, W / 2, p.y + 24);
         ctx.shadowBlur = 0;
       }
 
@@ -893,7 +893,7 @@ export default function App() {
         // Only show enemy label briefly after spawn (fade out)
         if (o.age < 30) {
           ctx.globalAlpha = Math.max(0, 1 - o.age / 30);
-          ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
+          ctx.font = "bold 14px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
           ctx.fillText(o.name, 0, sz + 16);
           ctx.globalAlpha = 1;
         }
@@ -948,7 +948,7 @@ export default function App() {
         }
 
         // Label below
-        ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.font = "bold 14px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "top";
         ctx.fillText(p.name, 0, R + 6);
 
         ctx.restore();
@@ -972,9 +972,9 @@ export default function App() {
         ctx.beginPath(); ctx.arc(0, 0, 9 + b.phase * 2, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#ff3366"; ctx.textAlign = "center";
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#ff3366"; ctx.textAlign = "center";
         ctx.fillText("A G I", 0, -bSize - 14);
-        ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "#ff336680";
+        ctx.font = "12px 'Courier New', monospace"; ctx.fillStyle = "#ff336680";
         ctx.fillText(b.phase === 2 ? "FINAL FORM" : b.phase === 1 ? "REASONING MODE" : "THE SINGULARITY", 0, -bSize - 3);
         const hpW = 160;
         ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.beginPath(); ctx.roundRect(-hpW / 2 - 2, bSize + 8, hpW + 4, 16, 6); ctx.fill();
@@ -983,16 +983,16 @@ export default function App() {
         const hpGrad = ctx.createLinearGradient(-hpW / 2, 0, -hpW / 2 + hpFill, 0);
         hpGrad.addColorStop(0, "#ff3366"); hpGrad.addColorStop(1, b.phase === 2 ? "#ff0000" : "#ff6b9d");
         ctx.fillStyle = hpGrad; ctx.beginPath(); ctx.roundRect(-hpW / 2, bSize + 10, hpFill, 12, 4); ctx.fill();
-        ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
         ctx.fillText(Math.ceil(b.hp) + " / " + b.maxHp, 0, bSize + 20);
         ctx.restore();
       }
       if (g.boss && g.boss.dead && g.boss.deathT > 0) {
         const al = Math.min(1, (130 - g.boss.deathT) / 40);
-        ctx.font = "bold 26px 'Courier New', monospace"; ctx.fillStyle = `rgba(0,228,95,${al})`; ctx.textAlign = "center";
+        ctx.font = "bold 24px 'Courier New', monospace"; ctx.fillStyle = `rgba(0,228,95,${al})`; ctx.textAlign = "center";
         ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 25;
         ctx.fillText("AGI DEFEATED!", W / 2, H / 2 - 25);
-        ctx.font = "16px 'Courier New', monospace"; ctx.fillStyle = `rgba(255,215,0,${al})`;
+        ctx.font = "18px 'Courier New', monospace"; ctx.fillStyle = `rgba(255,215,0,${al})`;
         ctx.fillText("De toekomst is hier", W / 2, H / 2 + 10);
         ctx.shadowBlur = 0;
       }
@@ -1023,8 +1023,8 @@ export default function App() {
       // Floating texts — MISSED, enemy hit, power-up pickup (16px / 13px)
       g.texts.forEach(t => {
         ctx.globalAlpha = Math.min(1, t.l / 15);
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = t.c; ctx.textAlign = "center"; ctx.fillText(t.t, t.x, t.y);
-        if (t.sub) { ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(t.sub, t.x, t.y - 18); }
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = t.c; ctx.textAlign = "center"; ctx.fillText(t.t, t.x, t.y);
+        if (t.sub) { ctx.font = "bold 14px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(t.sub, t.x, t.y - 18); }
       });
       ctx.globalAlpha = 1;
 
@@ -1038,15 +1038,15 @@ export default function App() {
       ctx.fillStyle = hudGrad; ctx.fillRect(0, 0, W, hudH);
 
       // Score — top-left (26px)
-      ctx.font = "bold 26px 'Courier New', monospace"; ctx.fillStyle = "#b8d4f5"; ctx.textAlign = "left";
+      ctx.font = "bold 24px 'Courier New', monospace"; ctx.fillStyle = "#b8d4f5"; ctx.textAlign = "left";
       ctx.fillText(g.score.toLocaleString(), 14, 28);
-      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(184,212,245,0.35)"; ctx.fillText("SCORE", 14, 40);
+      ctx.font = "12px 'Courier New', monospace"; ctx.fillStyle = "rgba(184,212,245,0.35)"; ctx.fillText("SCORE", 14, 40);
 
       // Current year — top center (16px), single clear indicator
-      ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.textAlign = "center";
+      ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.textAlign = "center";
       ctx.fillText(g.curYear, W / 2, 22);
       // Name below, muted (11px)
-      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(240,244,249,0.35)";
+      ctx.font = "12px 'Courier New', monospace"; ctx.fillStyle = "rgba(240,244,249,0.35)";
       ctx.fillText(nameRef.current.toUpperCase(), W / 2, 36);
 
       // Hearts — top-right
@@ -1077,23 +1077,23 @@ export default function App() {
         const wa = Math.min(1, g.waveWarnT / 15);
         ctx.globalAlpha = wa;
         const wy = 62;
-        const wh = 34;
+        const wh = 40;
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, wy, W, wh);
         const wc = g.waveTheme?.c || "#ff4d6a";
         ctx.fillStyle = wc + "40"; ctx.fillRect(0, wy, W, 2); ctx.fillRect(0, wy + wh - 2, W, 2);
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
         ctx.shadowColor = wc; ctx.shadowBlur = 10;
-        ctx.fillText("⚠ " + g.waveWarning, W / 2, wy + 16);
+        ctx.fillText("⚠ " + g.waveWarning, W / 2, wy + 19);
         ctx.shadowBlur = 0;
         const modText = g.waveTheme?.mod === "fast" ? "SNEL" : g.waveTheme?.mod === "armored" ? "GEPANTSERD" : g.waveTheme?.mod === "miniboss" ? "MINI-BOSS" : "";
-        if (modText) { ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = wc + "90"; ctx.fillText(modText, W / 2, wy + 29); }
+        if (modText) { ctx.font = "bold 14px 'Courier New', monospace"; ctx.fillStyle = wc + "90"; ctx.fillText(modText, W / 2, wy + 33); }
         ctx.globalAlpha = 1;
       }
 
       // Weapon + powerup indicators — bottom corners (16px labels)
       if (g.weapon !== "laser") {
         const wc = g.weapon === "homing" ? "#ff9f43" : g.weapon === "rapid" ? "#ff6b9d" : "#45b7d1";
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "left";
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "left";
         ctx.fillText(g.weapon.toUpperCase(), 14, H - 28);
         const maxD = g.weapon === "homing" ? 350 : g.weapon === "rapid" ? 300 : 320;
         ctx.fillStyle = wc + "30"; ctx.fillRect(14, H - 20, 90, 5);
@@ -1101,7 +1101,7 @@ export default function App() {
       }
       if (g.powerupName) {
         const uc = g.shieldActive ? "#00e45f" : "#ffd700";
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = uc; ctx.textAlign = "right";
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = uc; ctx.textAlign = "right";
         ctx.fillText(g.powerupName, W - 14, H - 28);
         const maxD = g.shieldActive ? 240 : 260;
         ctx.fillStyle = uc + "30"; ctx.fillRect(W - 104, H - 20, 90, 5);
@@ -1112,7 +1112,7 @@ export default function App() {
       if (!g.hintMoved && g.hintMove > 0) {
         g.hintMove--;
         ctx.globalAlpha = Math.min(1, g.hintMove / 30) * 0.6;
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#6b9fe8"; ctx.textAlign = "center";
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#6b9fe8"; ctx.textAlign = "center";
         ctx.fillText("← → ↑ ↓  BEWEGEN", W / 2, H * 0.55);
         ctx.globalAlpha = 1;
       }
@@ -1121,7 +1121,7 @@ export default function App() {
         const showAt = g.hintMoved || g.hintMove <= 0;
         if (showAt) {
           ctx.globalAlpha = Math.min(1, g.hintShoot / 30) * 0.6;
-          ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#ff9f43"; ctx.textAlign = "center";
+          ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#ff9f43"; ctx.textAlign = "center";
           ctx.fillText("SPACE  SCHIETEN", W / 2, H * 0.62);
           ctx.globalAlpha = 1;
         }
@@ -1129,7 +1129,7 @@ export default function App() {
 
       // ─── Collected counter (bottom right, above powerup if active) ───
       if (g.collected.length > 0) {
-        ctx.font = "bold 13px 'Courier New', monospace";
+        ctx.font = "bold 14px 'Courier New', monospace";
         ctx.fillStyle = "rgba(0,228,95,0.7)"; ctx.textAlign = "right";
         ctx.fillText("✓ " + g.collected.length + "/" + TIMELINE.length, W - 14, H - 8);
       }
@@ -1154,7 +1154,7 @@ export default function App() {
 
         // Subtitle (era name) — 16px
         ctx.globalAlpha = env * 0.9;
-        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = mainC;
+        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = mainC;
         ctx.shadowColor = mainC; ctx.shadowBlur = 10;
         ctx.fillText(isAGI ? "FINAL BOSS" : (YEAR_SUBS[g.yearBanner] || ""), W / 2, H / 2 + 28);
         ctx.shadowBlur = 0;
