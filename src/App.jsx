@@ -160,11 +160,11 @@ function createGame() {
   return {
     x: W / 2, tx: W / 2, y: H - 120, ty: H - 120,
     speed: 2, dist: 0, score: 0, hp: 5, combo: 0, comboT: 0, maxCombo: 0,
-    collected: [], obstacles: [], bullets: [], sparks: [], texts: [], vfx: [],
+    collected: [], obstacles: [], bullets: [], sparks: [], texts: [],
     stars, nebulae, trail: [], gridY: 0, frame: 0,
     shake: 0, flash: 0, flashC: "#00e45f", over: false,
     yearBanner: null, yearBannerT: 0, lastYear: "", curYear: "2022",
-    speedLines: [], tilt: 0,
+    tilt: 0,
     // Weapons
     weapon: "laser", weaponT: 0, shootCD: 0,
     shieldActive: false, scoreMultiplier: 1,
@@ -182,7 +182,7 @@ function createGame() {
     puSpawnT: 200 + Math.floor(Math.random() * 150),
     // Boss
     boss: null, bossPhase: false, bossDefeated: false,
-    shipLevel: 0, shipUpgradeT: 0,
+    shipLevel: 0,
     rockets: [],
     // Hints
     hintMove: 180, hintShoot: 250, hintMoved: false, hintShot: false,
@@ -201,7 +201,7 @@ function drawHex(ctx, x, y, r) {
 function drawShip(ctx, g, x, y) {
   const lvl = g.shipLevel;
 
-  // ═══ Drone companions (lvl 3+ = 2025 "Year of Agents") drawn in world space ═══
+  // ═══ Drone companions (lvl 3+ = 2025 "Year of Agents") — subtle, no connecting lines ═══
   if (lvl >= 3) {
     const dcount = lvl >= 4 ? 3 : 2;
     for (let i = 0; i < dcount; i++) {
@@ -211,21 +211,11 @@ function drawShip(ctx, g, x, y) {
       const dy = y + Math.sin(a) * 8;
       ctx.save();
       ctx.translate(dx, dy);
-      // thin connecting line
-      ctx.strokeStyle = "rgba(255,217,74,0.15)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(x - dx, y - dy); ctx.stroke();
-      // drone body
       const pulse = 0.6 + 0.4 * Math.sin(g.frame * 0.2 + i);
-      ctx.shadowColor = "#ffd94a"; ctx.shadowBlur = 10 * pulse;
+      ctx.shadowColor = "#ffd94a"; ctx.shadowBlur = 8 * pulse;
       ctx.fillStyle = "#ffd94a";
-      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = "#fff3a0"; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.stroke();
-      // tiny wings
-      ctx.fillStyle = "rgba(255,217,74,0.6)";
-      ctx.fillRect(-9, -1, 6, 2);
-      ctx.fillRect(3, -1, 6, 2);
       ctx.restore();
     }
   }
@@ -233,27 +223,6 @@ function drawShip(ctx, g, x, y) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(g.tilt);
-
-  // ═══ Upgrade flash halo ═══
-  if (g.shipUpgradeT > 0) {
-    const up = g.shipUpgradeT / 90;
-    const rr = 30 + (1 - up) * 80;
-    ctx.globalAlpha = up * 0.8;
-    ctx.strokeStyle = "#00e45f"; ctx.lineWidth = 3;
-    ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 25;
-    ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    // sparkles
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI * 2 / 6) * i + g.frame * 0.1;
-      const sr = 25 + (1 - up) * 40;
-      ctx.globalAlpha = up;
-      ctx.fillStyle = "#00e45f"; ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 15;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * sr, Math.sin(a) * sr, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-    ctx.globalAlpha = 1;
-  }
 
   // ═══ Shield ═══
   if (g.shieldActive) {
@@ -413,11 +382,8 @@ export default function App() {
       g.frame++;
       const TOTAL = 16000;
 
-      const realSpeed = Math.min(6, 2 + g.dist * 0.00015);
-      // Year transition pause — freeze timeline + world motion
-      const yearPaused = g.yearBannerT > 30 && g.yearBanner !== "AGI";
-      g.speed = yearPaused ? 0 : realSpeed;
-      if (!yearPaused) g.dist += g.speed;
+      g.speed = Math.min(6, 2 + g.dist * 0.00015);
+      g.dist += g.speed;
       const prog = Math.min(1, g.dist / TOTAL);
 
       // Year
@@ -426,14 +392,13 @@ export default function App() {
       if (newYear !== g.lastYear) {
         const isFirstYear = g.lastYear === "";
         g.curYear = newYear;
-        g.yearBanner = newYear; g.yearBannerT = 180; g.yearBannerMax = 180; g.lastYear = newYear;
+        g.yearBanner = newYear; g.yearBannerT = 90; g.yearBannerMax = 90; g.lastYear = newYear;
         sfxYear();
-        if (!isFirstYear) { g.shipUpgradeT = 90; }
+        // Silent ship upgrade — no halo, just color change
       } else {
         g.curYear = newYear;
       }
       if (g.yearBannerT > 0) g.yearBannerT--;
-      if (g.shipUpgradeT > 0) g.shipUpgradeT--;
 
       // Ship level tied to the current year (2022=0 ... 2026=4)
       g.shipLevel = Math.max(0, YEARS.indexOf(g.curYear));
@@ -469,14 +434,15 @@ export default function App() {
       if (wantShoot) g.hintShot = true;
       if (wantShoot && g.shootCD <= 0) {
         sfxShoot();
-        // Drone companions fire along with you (lvl 3+ = 2025+)
+        // Drone companions fire along with you (lvl 3+ = 2025+) — match main weapon color
         if (g.shipLevel >= 3) {
           const droneA = g.frame * 0.04;
           const r = 32 + g.shipLevel * 2;
           const dx1 = Math.cos(droneA) * r, dx2 = Math.cos(droneA + Math.PI) * r;
           const dy1 = Math.sin(droneA) * 8, dy2 = Math.sin(droneA + Math.PI) * 8;
-          g.bullets.push({ x: g.x + dx1, y: g.y + dy1, vx: 0, vy: -11, c: "#ffd94a", s: 2.5, drone: true });
-          g.bullets.push({ x: g.x + dx2, y: g.y + dy2, vx: 0, vy: -11, c: "#ffd94a", s: 2.5, drone: true });
+          const dc = g.weapon === "triple" ? "#45b7d1" : g.weapon === "rapid" ? "#ff6b9d" : g.weapon === "homing" ? "#ff9f43" : "#6b9fe8";
+          g.bullets.push({ x: g.x + dx1, y: g.y + dy1, vx: 0, vy: -11, c: dc, s: 2.5, drone: true });
+          g.bullets.push({ x: g.x + dx2, y: g.y + dy2, vx: 0, vy: -11, c: dc, s: 2.5, drone: true });
         }
         if (g.weapon === "triple") {
           g.shootCD = 10;
@@ -517,14 +483,12 @@ export default function App() {
       // Trail + environment
       if (g.frame % 2 === 0) g.trail.push({ x: g.x, y: g.y + 22, l: 20, c: g.shieldActive ? "#00e45f" : "#6b9fe8" });
       g.trail = g.trail.filter(t => { t.y += 2.5; t.l--; return t.l > 0; });
-      if (g.speed > 3 && g.frame % 2 === 0) g.speedLines.push({ x: Math.random() * W, y: -10, l: 20 + Math.random() * 50, v: g.speed * 3 });
-      g.speedLines = g.speedLines.filter(s => { s.y += s.v; return s.y < H + 50; });
       g.gridY = (g.gridY + g.speed * 1.2) % 50;
       g.stars.forEach(s => { s.y += s.v * g.speed * 0.3; s.tw += 0.03; if (s.y > H) { s.y = 0; s.x = Math.random() * W; } });
       g.nebulae.forEach(n => { n.y += n.v * g.speed * 0.2; if (n.y > H + n.r) { n.y = -n.r; n.x = Math.random() * W; } });
 
       // ─── PORTAL SPAWNING (smooth, no freeze) ───
-      if (!g.portal && g.mIdx < TIMELINE.length && !g.bossPhase && !yearPaused) {
+      if (!g.portal && g.mIdx < TIMELINE.length && !g.bossPhase) {
         const nextDist = (g.mIdx + 1) * (TOTAL / (TIMELINE.length + 3));
         if (g.dist >= nextDist) {
           const m = TIMELINE[g.mIdx];
@@ -553,7 +517,6 @@ export default function App() {
           }
 
           g.flash = 8; g.flashC = g.portal.c;
-          g.texts.push({ x: W / 2, y: g.portal.y - 30, t: "+" + p, l: 55, c: g.portal.c, sub: g.combo > 1 ? g.combo + "x COMBO" : "", big: "" });
           g.portal = null;
         } else if (g.portal.y > H + 40) {
           // MISSED — negative feedback
@@ -566,7 +529,7 @@ export default function App() {
       }
 
       // ─── WAVE SYSTEM (decoupled from portals) ───
-      if (!g.bossPhase && !yearPaused) {
+      if (!g.bossPhase) {
         if (g.waveWarnT > 0) g.waveWarnT--;
 
         if (!g.waveActive) {
@@ -609,7 +572,6 @@ export default function App() {
             g.waveCD = 80 + Math.max(0, 50 - g.waveNum * 2);
             g.score += 100 * g.scoreMultiplier;
             sfxWaveClear();
-            g.texts.push({ x: W / 2, y: H * 0.4, t: "WAVE " + g.waveNum + " CLEAR!", l: 55, c: "#00e45f", sub: "+100", big: "" });
 
             // Drop powerup after wave (35% chance)
             if (Math.random() < 0.35) {
@@ -716,7 +678,6 @@ export default function App() {
       if (g.comboT > 0) g.comboT--; else g.combo = 0;
       g.sparks = g.sparks.filter(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.vx *= 0.98; p.l--; return p.l > 0; });
       g.texts = g.texts.filter(t => { if (!t.news) t.y -= 1.2; t.l--; return t.l > 0; });
-      g.vfx = g.vfx.filter(v => { v.t++; return v.t < v.max; });
 
       // ─── BOSS ───
       if (g.dist >= TOTAL && g.mIdx >= TIMELINE.length && !g.portal && !g.bossPhase && !g.bossDefeated) {
@@ -875,16 +836,11 @@ export default function App() {
 
         // ─── Text INSIDE the gate ───
         ctx.textAlign = "center";
-        ctx.font = "bold 26px 'Courier New', monospace";
-        const headline = p.name + ": " + p.sub;
-        const fits = ctx.measureText(headline).width < W - 100;
-        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 20;
-        if (fits) {
-          ctx.fillText(headline, W / 2, p.y + 8);
-        } else {
-          ctx.fillText(p.name, W / 2, p.y - 6);
-          ctx.fillText(p.sub, W / 2, p.y + 22);
-        }
+        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 18;
+        ctx.font = "bold 16px 'Courier New', monospace";
+        ctx.fillText(p.name, W / 2, p.y - 4);
+        ctx.font = "13px 'Courier New', monospace";
+        ctx.fillText(p.sub, W / 2, p.y + 18);
         ctx.shadowBlur = 0;
       }
 
@@ -937,7 +893,7 @@ export default function App() {
         // Only show enemy label briefly after spawn (fade out)
         if (o.age < 30) {
           ctx.globalAlpha = Math.max(0, 1 - o.age / 30);
-          ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
+          ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = o.c; ctx.textAlign = "center";
           ctx.fillText(o.name, 0, sz + 16);
           ctx.globalAlpha = 1;
         }
@@ -992,7 +948,7 @@ export default function App() {
         }
 
         // Label below
-        ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = p.c; ctx.textAlign = "center"; ctx.textBaseline = "top";
         ctx.fillText(p.name, 0, R + 6);
 
         ctx.restore();
@@ -1016,9 +972,9 @@ export default function App() {
         ctx.beginPath(); ctx.arc(0, 0, 9 + b.phase * 2, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#ff3366"; ctx.textAlign = "center";
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#ff3366"; ctx.textAlign = "center";
         ctx.fillText("A G I", 0, -bSize - 14);
-        ctx.font = "10px 'Courier New', monospace"; ctx.fillStyle = "#ff336680";
+        ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "#ff336680";
         ctx.fillText(b.phase === 2 ? "FINAL FORM" : b.phase === 1 ? "REASONING MODE" : "THE SINGULARITY", 0, -bSize - 3);
         const hpW = 160;
         ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.beginPath(); ctx.roundRect(-hpW / 2 - 2, bSize + 8, hpW + 4, 16, 6); ctx.fill();
@@ -1027,13 +983,13 @@ export default function App() {
         const hpGrad = ctx.createLinearGradient(-hpW / 2, 0, -hpW / 2 + hpFill, 0);
         hpGrad.addColorStop(0, "#ff3366"); hpGrad.addColorStop(1, b.phase === 2 ? "#ff0000" : "#ff6b9d");
         ctx.fillStyle = hpGrad; ctx.beginPath(); ctx.roundRect(-hpW / 2, bSize + 10, hpFill, 12, 4); ctx.fill();
-        ctx.font = "bold 9px 'Courier New', monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.font = "bold 11px 'Courier New', monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
         ctx.fillText(Math.ceil(b.hp) + " / " + b.maxHp, 0, bSize + 20);
         ctx.restore();
       }
       if (g.boss && g.boss.dead && g.boss.deathT > 0) {
         const al = Math.min(1, (130 - g.boss.deathT) / 40);
-        ctx.font = "bold 32px 'Courier New', monospace"; ctx.fillStyle = `rgba(0,228,95,${al})`; ctx.textAlign = "center";
+        ctx.font = "bold 26px 'Courier New', monospace"; ctx.fillStyle = `rgba(0,228,95,${al})`; ctx.textAlign = "center";
         ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 25;
         ctx.fillText("AGI DEFEATED!", W / 2, H / 2 - 25);
         ctx.font = "16px 'Courier New', monospace"; ctx.fillStyle = `rgba(255,215,0,${al})`;
@@ -1064,187 +1020,99 @@ export default function App() {
       g.sparks.forEach(p => { ctx.globalAlpha = Math.max(0, p.l / 45); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalAlpha = 1;
 
-      // ═══ NARRATIVE VFX (category beats) ═══
-      g.vfx.forEach(v => {
-        const prog = v.t / v.max;
-        const fadeIn = Math.min(1, prog / 0.15);
-        const fadeOut = prog > 0.7 ? Math.max(0, (1 - prog) / 0.3) : 1;
-        const alpha = fadeIn * fadeOut;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-
-        if (v.cat === "model") {
-          // Expanding sparkle constellation — 12 ✦ in orbit
-          const r = 40 + prog * 220;
-          const cx = W / 2, cy = H * 0.42;
-          for (let i = 0; i < 12; i++) {
-            const a = (Math.PI * 2 / 12) * i + v.t * 0.03;
-            const px = cx + Math.cos(a) * r;
-            const py = cy + Math.sin(a) * r * 0.75;
-            ctx.globalAlpha = alpha * (0.6 + 0.4 * Math.sin(v.t * 0.15 + i));
-            ctx.font = "bold 26px system-ui, 'Courier New'";
-            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 18;
-            ctx.fillText("✦", px, py);
-          }
-        } else if (v.cat === "business") {
-          // Golden $ rain
-          for (let i = 0; i < 14; i++) {
-            const px = ((W / 14) * i) + (W / 28) + Math.sin(v.t * 0.04 + i) * 14;
-            const py = -30 + ((v.t * 3.5 + i * 57) % (H + 60));
-            ctx.globalAlpha = alpha * 0.9;
-            ctx.font = "bold 28px system-ui, 'Courier New'";
-            ctx.fillStyle = "#ffd94a"; ctx.shadowColor = "#ffb300"; ctx.shadowBlur = 12;
-            ctx.fillText("$", px, py);
-          }
-        } else if (v.cat === "policy") {
-          // EU stars — 12 in circle, flickering
-          const cx = W / 2, cy = H * 0.38;
-          const rad = 140 + Math.sin(v.t * 0.1) * 8;
-          for (let i = 0; i < 12; i++) {
-            const a = (Math.PI * 2 / 12) * i - Math.PI / 2 + v.t * 0.008;
-            const px = cx + Math.cos(a) * rad;
-            const py = cy + Math.sin(a) * rad * 0.85;
-            const flick = 0.55 + 0.45 * Math.sin(v.t * 0.25 + i * 0.7);
-            ctx.globalAlpha = alpha * flick;
-            ctx.font = "bold 30px system-ui, 'Courier New'";
-            ctx.fillStyle = "#ffd94a"; ctx.shadowColor = "#ffd94a"; ctx.shadowBlur = 14;
-            ctx.fillText("★", px, py);
-          }
-        } else if (v.cat === "culture") {
-          // Floating hearts/notes bubbling up
-          for (let i = 0; i < 10; i++) {
-            const baseX = W / 2 + (i - 4.5) * 55;
-            const px = baseX + Math.sin(v.t * 0.05 + i * 1.3) * 30;
-            const py = H * 0.9 - prog * H * 0.75 - (i * 13) % 60;
-            ctx.globalAlpha = alpha * (0.7 + 0.3 * Math.sin(v.t * 0.2 + i));
-            ctx.font = "bold 26px system-ui, 'Courier New'";
-            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 12;
-            ctx.fillText(i % 3 === 0 ? "♥" : i % 3 === 1 ? "♪" : "♫", px, py);
-          }
-        } else if (v.cat === "news") {
-          // Breaking-news lightning flashes
-          const flashes = [
-            { x: W * 0.18, y: H * 0.25, s: 62 },
-            { x: W * 0.82, y: H * 0.30, s: 54 },
-            { x: W * 0.50, y: H * 0.18, s: 72 },
-          ];
-          flashes.forEach((f, i) => {
-            const on = Math.sin(v.t * 0.4 + i * 2) > 0;
-            if (!on) return;
-            ctx.globalAlpha = alpha;
-            ctx.font = `bold ${f.s}px system-ui, 'Courier New'`;
-            ctx.fillStyle = v.c; ctx.shadowColor = v.c; ctx.shadowBlur = 22;
-            ctx.fillText("⚡", f.x, f.y);
-          });
-        }
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic";
-      });
-
-      // Floating texts
+      // Floating texts — MISSED, enemy hit, power-up pickup (16px / 13px)
       g.texts.forEach(t => {
         ctx.globalAlpha = Math.min(1, t.l / 15);
-        if (t.news) {
-          // News quote — wrapped, subtle, longer-lived
-          ctx.font = "italic 13px 'Courier New', monospace"; ctx.textAlign = "center";
-          const maxW = W - 60;
-          const words = t.news.split(" "); const lines = []; let cur = "";
-          for (const w of words) { const test = cur ? cur + " " + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
-          if (cur) lines.push(cur);
-          // Dark backdrop for readability
-          const lh = 18; const boxH = lines.length * lh + 14;
-          ctx.globalAlpha = Math.min(1, t.l / 20) * 0.55;
-          ctx.fillStyle = "#000"; ctx.fillRect(30, t.y - 14, W - 60, boxH);
-          ctx.globalAlpha = Math.min(1, t.l / 20);
-          ctx.fillStyle = t.c;
-          lines.forEach((ln, i) => ctx.fillText(ln, t.x, t.y + i * lh));
-          return;
-        }
-        if (t.big) { ctx.font = "bold 24px 'Courier New', monospace"; ctx.fillStyle = t.c + "50"; ctx.textAlign = "center"; ctx.fillText(t.big, t.x, t.y - 35); }
-        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = t.c; ctx.textAlign = "center"; ctx.fillText(t.t, t.x, t.y);
-        if (t.sub) { ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(t.sub, t.x, t.y - 20); }
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = t.c; ctx.textAlign = "center"; ctx.fillText(t.t, t.x, t.y);
+        if (t.sub) { ctx.font = "bold 13px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(t.sub, t.x, t.y - 18); }
       });
       ctx.globalAlpha = 1;
 
       // ═══ SHIP ═══
       drawShip(ctx, g, g.x, g.y);
 
-      // ═══ HUD ═══
-      const hudH = 72;
+      // ═══ HUD — consolidated 5-size scale: 11/13/16/26/56px ═══
+      const hudH = 64;
       const hudGrad = ctx.createLinearGradient(0, 0, 0, hudH);
       hudGrad.addColorStop(0, "rgba(6,12,24,0.95)"); hudGrad.addColorStop(1, "rgba(6,12,24,0)");
       ctx.fillStyle = hudGrad; ctx.fillRect(0, 0, W, hudH);
 
-      ctx.font = "bold 22px 'Courier New', monospace"; ctx.fillStyle = "#b8d4f5"; ctx.textAlign = "left";
-      ctx.fillText(g.score.toLocaleString(), 14, 24);
-      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(184,212,245,0.35)"; ctx.fillText("SCORE", 14, 36);
+      // Score — top-left (26px)
+      ctx.font = "bold 26px 'Courier New', monospace"; ctx.fillStyle = "#b8d4f5"; ctx.textAlign = "left";
+      ctx.fillText(g.score.toLocaleString(), 14, 28);
+      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(184,212,245,0.35)"; ctx.fillText("SCORE", 14, 40);
 
-      ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = "rgba(0,228,95,0.5)"; ctx.textAlign = "center";
-      ctx.fillText(nameRef.current.toUpperCase(), W / 2, 16);
+      // Current year — top center (16px), single clear indicator
+      ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.textAlign = "center";
+      ctx.fillText(g.curYear, W / 2, 22);
+      // Name below, muted (11px)
+      ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = "rgba(240,244,249,0.35)";
+      ctx.fillText(nameRef.current.toUpperCase(), W / 2, 36);
 
-      if (g.combo > 1) { ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#00e45f"; ctx.fillText(Math.min(5, g.combo) + "x COMBO", W / 2, 34); }
-
+      // Hearts — top-right
       ctx.textAlign = "right";
       for (let i = 0; i < 5; i++) {
-        const active = i < g.hp, hx = W - 24 - i * 26;
+        const active = i < g.hp, hx = W - 20 - i * 22;
         ctx.fillStyle = active ? "#6b9fe820" : "rgba(107,159,232,0.06)";
-        ctx.beginPath(); ctx.arc(hx, 20, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx, 22, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = active ? "#6b9fe8" : "rgba(107,159,232,0.12)"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(hx, 20, 10, 0, Math.PI * 2); ctx.stroke();
-        if (active) { ctx.fillStyle = "#b8d4f5"; ctx.beginPath(); ctx.arc(hx, 20, 4.5, 0, Math.PI * 2); ctx.fill(); }
+        ctx.beginPath(); ctx.arc(hx, 22, 8, 0, Math.PI * 2); ctx.stroke();
+        if (active) { ctx.fillStyle = "#b8d4f5"; ctx.beginPath(); ctx.arc(hx, 22, 3.5, 0, Math.PI * 2); ctx.fill(); }
       }
 
-      // Progress bar
-      const pbY = 52;
-      ctx.fillStyle = "rgba(61,106,191,0.08)"; ctx.beginPath(); ctx.roundRect(14, pbY, W - 28, 9, 4); ctx.fill();
+      // Progress bar — no year-text labels, just tick marks
+      const pbY = 48;
+      ctx.fillStyle = "rgba(61,106,191,0.08)"; ctx.beginPath(); ctx.roundRect(14, pbY, W - 28, 7, 3); ctx.fill();
       const pbw = (W - 28) * prog;
-      if (pbw > 0) { const pbg = ctx.createLinearGradient(14, 0, 14 + pbw, 0); pbg.addColorStop(0, "#3d6abf"); pbg.addColorStop(1, "#00e45f"); ctx.fillStyle = pbg; ctx.beginPath(); ctx.roundRect(14, pbY, pbw, 9, 4); ctx.fill(); }
-      YEARS.forEach((yr, i) => { const px = 14 + (W - 28) * (i / 4); const portalMatch = g.portal && g.portal.yr === yr; const pulse = portalMatch ? 0.7 + Math.sin(g.frame * 0.12) * 0.3 : 0; ctx.font = (i === yi || portalMatch) ? "bold 10px 'Courier New', monospace" : "10px 'Courier New', monospace"; if (portalMatch) { ctx.shadowColor = "#00e45f"; ctx.shadowBlur = 8 + pulse * 6; ctx.fillStyle = "#00e45f"; } else { ctx.shadowBlur = 0; ctx.fillStyle = i === yi ? "#00e45f" : "rgba(240,244,249,0.2)"; } ctx.textAlign = "center"; ctx.fillText(yr, px, pbY - 3); ctx.shadowBlur = 0; });
+      if (pbw > 0) { const pbg = ctx.createLinearGradient(14, 0, 14 + pbw, 0); pbg.addColorStop(0, "#3d6abf"); pbg.addColorStop(1, "#00e45f"); ctx.fillStyle = pbg; ctx.beginPath(); ctx.roundRect(14, pbY, pbw, 7, 3); ctx.fill(); }
+      // Tick marks (no labels)
+      YEARS.forEach((yr, i) => {
+        const px = 14 + (W - 28) * (i / 4);
+        ctx.fillStyle = i <= yi ? "rgba(0,228,95,0.55)" : "rgba(240,244,249,0.15)";
+        ctx.fillRect(px - 1, pbY - 2, 2, 11);
+      });
 
-      // Wave warning — BIG and prominent
+      // Wave warning — compact, just below progress bar
       if (g.waveWarnT > 0 && g.waveWarning) {
         const wa = Math.min(1, g.waveWarnT / 15);
         ctx.globalAlpha = wa;
-        const wy = 70; // Just below progress bar, higher up so it doesn't block the action
-        const wh = 42;
-        // Full-width dark background band
+        const wy = 62;
+        const wh = 34;
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, wy, W, wh);
-        // Colored accent lines
         const wc = g.waveTheme?.c || "#ff4d6a";
         ctx.fillStyle = wc + "40"; ctx.fillRect(0, wy, W, 2); ctx.fillRect(0, wy + wh - 2, W, 2);
-        // Warning icon + text (slightly smaller)
-        ctx.font = "bold 17px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
-        ctx.shadowColor = wc; ctx.shadowBlur = 12;
-        ctx.fillText("⚠ INCOMING: " + g.waveWarning + " ⚠", W / 2, wy + 19);
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "center";
+        ctx.shadowColor = wc; ctx.shadowBlur = 10;
+        ctx.fillText("⚠ " + g.waveWarning, W / 2, wy + 16);
         ctx.shadowBlur = 0;
-        // Subtext with modifier info
-        const modText = g.waveTheme?.mod === "fast" ? "SNEL — Extra snelle vijanden!" : g.waveTheme?.mod === "armored" ? "GEPANTSERD — Extra HP!" : g.waveTheme?.mod === "miniboss" ? "MINI-BOSS — Pas op voor de leider!" : "Schiet ze neer!";
-        ctx.font = "10px 'Courier New', monospace"; ctx.fillStyle = wc + "90";
-        ctx.fillText(modText, W / 2, wy + 34);
+        const modText = g.waveTheme?.mod === "fast" ? "SNEL" : g.waveTheme?.mod === "armored" ? "GEPANTSERD" : g.waveTheme?.mod === "miniboss" ? "MINI-BOSS" : "";
+        if (modText) { ctx.font = "11px 'Courier New', monospace"; ctx.fillStyle = wc + "90"; ctx.fillText(modText, W / 2, wy + 29); }
         ctx.globalAlpha = 1;
       }
 
-      // Weapon + powerup indicators
+      // Weapon + powerup indicators — bottom corners (16px labels)
       if (g.weapon !== "laser") {
         const wc = g.weapon === "homing" ? "#ff9f43" : g.weapon === "rapid" ? "#ff6b9d" : "#45b7d1";
-        ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "left";
-        ctx.fillText("⚡ " + g.weapon.toUpperCase(), 14, H - 30);
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = wc; ctx.textAlign = "left";
+        ctx.fillText(g.weapon.toUpperCase(), 14, H - 28);
         const maxD = g.weapon === "homing" ? 350 : g.weapon === "rapid" ? 300 : 320;
-        ctx.fillStyle = wc + "30"; ctx.fillRect(14, H - 22, 90, 6);
-        ctx.fillStyle = wc; ctx.fillRect(14, H - 22, 90 * (g.weaponT / maxD), 6);
+        ctx.fillStyle = wc + "30"; ctx.fillRect(14, H - 20, 90, 5);
+        ctx.fillStyle = wc; ctx.fillRect(14, H - 20, 90 * (g.weaponT / maxD), 5);
       }
       if (g.powerupName) {
         const uc = g.shieldActive ? "#00e45f" : "#ffd700";
-        ctx.font = "bold 12px 'Courier New', monospace"; ctx.fillStyle = uc; ctx.textAlign = "right";
-        ctx.fillText(g.powerupName, W - 14, H - 30);
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = uc; ctx.textAlign = "right";
+        ctx.fillText(g.powerupName, W - 14, H - 28);
         const maxD = g.shieldActive ? 240 : 260;
-        ctx.fillStyle = uc + "30"; ctx.fillRect(W - 104, H - 22, 90, 6);
-        ctx.fillStyle = uc; ctx.fillRect(W - 104, H - 22, 90 * (g.powerupT / maxD), 6);
+        ctx.fillStyle = uc + "30"; ctx.fillRect(W - 104, H - 20, 90, 5);
+        ctx.fillStyle = uc; ctx.fillRect(W - 104, H - 20, 90 * (g.powerupT / maxD), 5);
       }
 
-      // ─── In-game hints (first seconds, fade when player acts) ───
+      // ─── In-game hints (first seconds, fade when player acts) — 16px ───
       if (!g.hintMoved && g.hintMove > 0) {
         g.hintMove--;
         ctx.globalAlpha = Math.min(1, g.hintMove / 30) * 0.6;
-        ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#6b9fe8"; ctx.textAlign = "center";
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#6b9fe8"; ctx.textAlign = "center";
         ctx.fillText("← → ↑ ↓  BEWEGEN", W / 2, H * 0.55);
         ctx.globalAlpha = 1;
       }
@@ -1253,98 +1121,43 @@ export default function App() {
         const showAt = g.hintMoved || g.hintMove <= 0;
         if (showAt) {
           ctx.globalAlpha = Math.min(1, g.hintShoot / 30) * 0.6;
-          ctx.font = "bold 18px 'Courier New', monospace"; ctx.fillStyle = "#ff9f43"; ctx.textAlign = "center";
+          ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = "#ff9f43"; ctx.textAlign = "center";
           ctx.fillText("SPACE  SCHIETEN", W / 2, H * 0.62);
           ctx.globalAlpha = 1;
         }
       }
 
-      // (Achievement toast removed — portal text is enough)
-
-      // ─── Collected counter (simple) ───
+      // ─── Collected counter (bottom right, above powerup if active) ───
       if (g.collected.length > 0) {
-        ctx.font = "bold 14px 'Courier New', monospace";
-        ctx.fillStyle = "#00e45f"; ctx.textAlign = "right";
-        ctx.fillText("✓ " + g.collected.length + "/" + TIMELINE.length, W - 14, H - 10);
+        ctx.font = "bold 13px 'Courier New', monospace";
+        ctx.fillStyle = "rgba(0,228,95,0.7)"; ctx.textAlign = "right";
+        ctx.fillText("✓ " + g.collected.length + "/" + TIMELINE.length, W - 14, H - 8);
       }
 
-      // ═══ CINEMATIC YEAR TRANSITION ═══
+      // ═══ YEAR BANNER — compact, non-blocking (90 frames) ═══
       if (g.yearBannerT > 0 && g.yearBanner) {
-        const max = g.yearBannerMax || 180;
+        const max = g.yearBannerMax || 90;
         const elapsed = max - g.yearBannerT;
-        const phaseIn = 35, phaseOut = 35;
-        // Envelope 0→1→0
+        const phaseIn = 18, phaseOut = 18;
         const env = elapsed < phaseIn ? elapsed / phaseIn : g.yearBannerT < phaseOut ? g.yearBannerT / phaseOut : 1;
         const isAGI = g.yearBanner === "AGI";
         const mainC = isAGI ? "#ff3366" : "#00e45f";
-        const subC = isAGI ? "#ff6b9d" : "#b8d4f5";
 
-        // 1) Dark vignette overlay
-        ctx.globalAlpha = env * 0.62;
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, W, H);
-
-        // 2) Letterbox bars (top + bottom) slide in
-        const barH = 78;
-        const barOff = (1 - env) * barH;
-        ctx.globalAlpha = env;
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, -barOff, W, barH);
-        ctx.fillRect(0, H - barH + barOff, W, barH);
-
-        // 3) Accent lines on bars
-        ctx.globalAlpha = env * 0.8;
-        ctx.fillStyle = mainC + "80";
-        ctx.fillRect(0, barH - barOff - 2, W, 2);
-        ctx.fillRect(0, H - barH + barOff, W, 2);
-
-        // 4) Horizontal sweep rays behind text (procedural)
-        ctx.globalAlpha = env * 0.22;
-        for (let i = 0; i < 8; i++) {
-          const ry = H / 2 - 80 + i * 20;
-          const rw = (elapsed * 18 + i * 50) % (W * 1.4);
-          const grad = ctx.createLinearGradient(W / 2 - rw / 2, ry, W / 2 + rw / 2, ry);
-          grad.addColorStop(0, "transparent"); grad.addColorStop(0.5, mainC); grad.addColorStop(1, "transparent");
-          ctx.fillStyle = grad;
-          ctx.fillRect(W / 2 - rw / 2, ry, rw, 1.5);
-        }
-
-        // 5) Year text — huge, with glow
+        // Year text — 56px, centered, with glow. No letterbox, no tagline, no dots.
         ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-        const yScale = 0.94 + env * 0.08;
-        ctx.save();
-        ctx.translate(W / 2, H / 2 - 10);
-        ctx.scale(yScale, yScale);
         ctx.globalAlpha = env;
-        ctx.font = "bold 110px 'Courier New', monospace";
+        ctx.font = "bold 56px 'Courier New', monospace";
         ctx.fillStyle = mainC;
-        ctx.shadowColor = mainC; ctx.shadowBlur = 55;
-        ctx.fillText(g.yearBanner, 0, 0);
-        ctx.shadowBlur = 0;
-        ctx.restore();
-
-        // 6) Subtitle (era name)
-        ctx.globalAlpha = env;
-        ctx.font = "bold 20px 'Courier New', monospace"; ctx.fillStyle = mainC; ctx.textAlign = "center";
-        ctx.shadowColor = mainC; ctx.shadowBlur = 14;
-        ctx.fillText(isAGI ? "FINAL BOSS" : (YEAR_SUBS[g.yearBanner] || ""), W / 2, H / 2 + 30);
+        ctx.shadowColor = mainC; ctx.shadowBlur = 40;
+        ctx.fillText(g.yearBanner, W / 2, H / 2);
         ctx.shadowBlur = 0;
 
-        // 7) Tagline (poetic one-liner)
-        ctx.globalAlpha = env * 0.85;
-        ctx.font = "italic 15px 'Courier New', monospace"; ctx.fillStyle = subC;
-        ctx.fillText(isAGI ? "— DESTROY THE SINGULARITY —" : "— " + (YEAR_TAGLINES[g.yearBanner] || "") + " —", W / 2, H / 2 + 58);
-
-        // 8) Progress tick marks (chapter indicator)
-        const yi = YEARS.indexOf(g.yearBanner);
-        if (yi >= 0 && !isAGI) {
-          ctx.globalAlpha = env * 0.55;
-          for (let i = 0; i < 5; i++) {
-            const tx = W / 2 + (i - 2) * 24;
-            ctx.fillStyle = i === yi ? mainC : subC;
-            ctx.beginPath(); ctx.arc(tx, H / 2 + 88, i === yi ? 5 : 3, 0, Math.PI * 2); ctx.fill();
-          }
-        }
+        // Subtitle (era name) — 16px
+        ctx.globalAlpha = env * 0.9;
+        ctx.font = "bold 16px 'Courier New', monospace"; ctx.fillStyle = mainC;
+        ctx.shadowColor = mainC; ctx.shadowBlur = 10;
+        ctx.fillText(isAGI ? "FINAL BOSS" : (YEAR_SUBS[g.yearBanner] || ""), W / 2, H / 2 + 28);
+        ctx.shadowBlur = 0;
 
         ctx.globalAlpha = 1;
       }
